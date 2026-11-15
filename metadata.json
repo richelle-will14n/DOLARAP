@@ -1,0 +1,6 @@
+{
+  "name": "DOLARAP",
+  "description": "Aplicativo Android Offline First para consulta e conversão de cotações de moedas estrangeiras em relação ao Real brasileiro (BRL).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

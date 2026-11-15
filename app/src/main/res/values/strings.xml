@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">DOLARAP</string>
+    <string name="e01_placeholder_subtitle">Estrutura inicial preparada (Etapa E01)</string>
+    <string name="e01_placeholder_status">Fundação técnica configurada com Kotlin, Jetpack Compose e Koin.</string>
+</resources>
