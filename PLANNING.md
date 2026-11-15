@@ -204,9 +204,10 @@ Ao investigar a documentação oficial da AwesomeAPI (`https://docs.awesomeapi.c
    - `https://economia.awesomeapi.com.br/xml/available` — lista completa de combinações/pares de moedas suportados.
    - `https://economia.awesomeapi.com.br/xml/available/uniq` — lista com códigos únicos e nomes das moedas.
    O caminho `/json/available` solicitado no escopo aparece em referências comunitárias, porém **não consta formalmente especificado com schema garantido na documentação oficial consultada** (ou pode variar entre mapa JSON plano `{"USD-BRL": "Dólar Americano/Real Brasileiro"}`, resposta XML ou indisponibilidade).
-2. **Estratégia segura de consumo do catálogo (implementada na E03):**
-   - `AwesomeApiRemoteDataSource.syncAvailableBrlCatalog()` tenta primeiramente `GET /json/available` usando parser defensivo (`Map<String, String?>` via Moshi).
-   - Caso `/json/available` retorne erro HTTP, formato não-JSON (como XML), JSON inválido ou vazio (mantendo falha direta apenas em `NoConnection`/`Timeout`), o cliente executa automaticamente o fallback para o endpoint oficialmente documentado `GET /xml/available` via `AvailableCatalogParser.parseXmlToBrlPairs` (suportando tanto `<xml><USD-BRL>...</USD-BRL></xml>` quanto elementos `<item>`), filtrando estritamente pares `*-BRL`.
+2. **Estratégia segura de consumo do catálogo (auditada na E03):**
+   - O endpoint **`/xml/available` é a fonte oficial documentada** pela AwesomeAPI. O endpoint `/json/available` é tratado apenas como **tentativa experimental** (sem afirmar que possui schema JSON oficialmente garantido).
+   - `AwesomeApiRemoteDataSource.syncAvailableBrlCatalog()` tenta `/json/available` e aciona o fallback oficial `/xml/available` quando o JSON retornar erro de endpoint (ex.: 404/400/415) ou formato inválido/incompatível/vazio. **Não** executa segunda requisição em HTTP `429` (rate limit), HTTP `5xx` (`ServerError`), `Timeout` ou `NoConnection`.
+   - `AvailableCatalogParser` aceita estritamente pares no padrão `^[A-Z]{3}-BRL$` com descrição válida, rejeitando pares cruzados, turismo (`BRLT`), `BRLPTAX`, códigos fora de 3 letras e valores inválidos. Em caso de falha de ambos os endpoints, o cache existente no Room é preservado.
 3. **Limitação de nomes amigáveis e identificação de pares:**
    - O catálogo `/available` traz pares combinados (nem todas as moedas do mundo possuem par direto com `BRL`, e algumas descrições vêm no formato `"Moeda Origem/Real Brasileiro"` ou apenas códigos abreviados).
    - Além disso, o catálogo não traz símbolos monetários (`$`, `€`, `£`) nem termos alternativos de busca sem acentuação.
@@ -230,8 +231,8 @@ Ao investigar a documentação oficial da AwesomeAPI (`https://docs.awesomeapi.c
   }
   ```
 - **Bloqueio por 404 excessivos:** Conforme alerta oficial da AwesomeAPI, requisições repetidas que geram HTTP 404 podem acarretar **bloqueio temporário de IP por ~1 hora**. Por isso:
-  - Pares inválidos são barrados antes do request via tabela local de pares disponíveis.
-  - Se um par antes válido passar a retornar `404 CoinNotExists`, ele é marcado como indisponível/inválido no catálogo local até nova atualização do catálogo, evitando novas tentativas em loop.
+  - Pares inválidos são barrados antes do request via regex `^[A-Z]{3}-BRL$` e pela tabela local `available_pairs`.
+  - Em resposta `404 CoinNotExists` (inclusive em consulta em lote), o sistema identifica o par inexistente **somente quando a resposta permitir** (ou quando houver apenas 1 par na requisição), marca apenas esse par como indisponível (`isAvailable = false`) e o bloqueia na sessão, preservando integralmente os demais pares válidos e evitando marcar todos os pares como inválidos sem evidência.
 - **Erros HTTP 429 / 5xx / Timeout / Falha de Parsing:** Mapeados para `DomainError`, preservam os dados locais e, no caso de falha de rede, agendam retry condicionado à conectividade.
 
 ---
@@ -361,7 +362,7 @@ No `RoomDatabase.Callback.onCreate` (e verificação idempotente na inicializaç
 ## 11. Decisões Técnicas e Limitações Conhecidas
 
 1. **Conversão entre duas moedas estrangeiras:** Como a consulta principal foca pares em relação ao `BRL`, a conversão `X -> Y` (ambas != `BRL`) será calculada por triangulação via `BRL` utilizando os respectivos `bid` (`bid(X-BRL) / bid(Y-BRL)`). Isso garante consistência com a lista exibida sem exigir N² consultas na API, mas deve ser documentado como taxa derivada de `bid` em relação ao BRL.
-2. **Incerteza do endpoint `/json/available`:** Como a documentação oficial da AwesomeAPI prioriza `/xml/available`, a camada `data/remote` (E03) consome `/json/available` com parser defensivo e mantém fallback automático para `/xml/available` sem comprometer o cache salvo no Room.
+2. **Catálogo oficial XML vs. tentativa experimental JSON:** Como a documentação oficial da AwesomeAPI define `/xml/available`, a camada `data/remote` (E03) trata `/xml/available` como fonte oficial e `/json/available` apenas como tentativa experimental com fallback XML (bloqueando segunda chamada em 429, 5xx, timeout e offline, sem comprometer o cache salvo no Room).
 3. **Cache de 1 minuto da AwesomeAPI:** Atualizações manuais em intervalos menores que 1 minuto podem retornar a mesma cotação em cache do provedor gratuito.
 4. **WorkManager não exato:** O intervalo de 6 horas representa periodicidade mínima/aproximada gerenciada pelo sistema Android.
 5. **Dependência Koin vs template inicial:** O template inicial ainda não possui Koin, WorkManager ou Navigation Compose descomentados; essa adequação ocorrerá somente na Etapa E01.

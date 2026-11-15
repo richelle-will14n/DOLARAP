@@ -141,10 +141,30 @@ class AwesomeApiRemoteDataSourceTest {
   }
 
   @Test
-  fun `fetchLastQuotes handles 404 CoinNotExists and blocks repeated requests for invalid pair`() =
+  fun `fetchLastQuotes rejects non-three-letter or non-BRL pairs locally without HTTP call`() =
+    runBlocking {
+      val result =
+        dataSource.fetchLastQuotes(listOf("USDT-BRL", "US-BRL", "123-BRL", "EUR-USD", "USD-BRLT"))
+
+      assertTrue(result is RemoteResult.Error)
+      assertTrue((result as RemoteResult.Error).error is RemoteError.InvalidRequest)
+      assertEquals(0, mockWebServer.requestCount)
+    }
+
+  @Test
+  fun `fetchLastQuotes handles 404 CoinNotExists in multi-pair batch, preserves valid pairs, and skips invalid pair on next request`() =
     runBlocking {
       availablePairDao.upsertAll(
         listOf(
+          AvailablePairEntity(
+            pairCode = "USD-BRL",
+            baseCode = "USD",
+            quoteCode = "BRL",
+            apiDescription = "Dólar Americano/Real Brasileiro",
+            friendlyName = "Dólar Americano",
+            isAvailable = true,
+            updatedAtMillis = 100L,
+          ),
           AvailablePairEntity(
             pairCode = "XYZ-BRL",
             baseCode = "XYZ",
@@ -153,7 +173,16 @@ class AwesomeApiRemoteDataSourceTest {
             friendlyName = "Teste",
             isAvailable = true,
             updatedAtMillis = 100L,
-          )
+          ),
+          AvailablePairEntity(
+            pairCode = "EUR-BRL",
+            baseCode = "EUR",
+            quoteCode = "BRL",
+            apiDescription = "Euro/Real Brasileiro",
+            friendlyName = "Euro",
+            isAvailable = true,
+            updatedAtMillis = 100L,
+          ),
         )
       )
 
@@ -165,16 +194,107 @@ class AwesomeApiRemoteDataSourceTest {
           )
       )
 
-      val firstAttempt = dataSource.fetchLastQuotes(listOf("XYZ-BRL"))
+      val firstAttempt = dataSource.fetchLastQuotes(listOf("USD-BRL", "XYZ-BRL", "EUR-BRL"))
       assertTrue(firstAttempt is RemoteResult.Error)
       val coinError = (firstAttempt as RemoteResult.Error).error as RemoteError.CoinNotExists
       assertEquals("XYZ-BRL", coinError.pairCode)
       assertFalse(availablePairDao.isPairSupported("XYZ-BRL"))
+      assertTrue(availablePairDao.isPairSupported("USD-BRL"))
+      assertTrue(availablePairDao.isPairSupported("EUR-BRL"))
+      assertEquals("/json/last/USD-BRL,XYZ-BRL,EUR-BRL", mockWebServer.takeRequest().path)
 
-      // Segunda tentativa deve ser bloqueada localmente sem enviar nova requisição HTTP
-      val secondAttempt = dataSource.fetchLastQuotes(listOf("XYZ-BRL"))
-      assertTrue((secondAttempt as RemoteResult.Error).error is RemoteError.CoinNotExists)
-      assertEquals(1, mockWebServer.requestCount)
+      // Próxima consulta em lote preserva os pares válidos e não repete XYZ-BRL
+      mockWebServer.enqueue(
+        MockResponse()
+          .setResponseCode(200)
+          .setBody(
+            """
+            {
+              "USDBRL": {
+                "code": "USD",
+                "codein": "BRL",
+                "name": "Dólar Americano/Real Brasileiro",
+                "high": "5.73",
+                "low": "5.72",
+                "varBid": "0.01",
+                "pctChange": "0.17",
+                "bid": "5.7250",
+                "ask": "5.7260",
+                "timestamp": "1618315045",
+                "create_date": "2021-04-13 08:57:27"
+              },
+              "EURBRL": {
+                "code": "EUR",
+                "codein": "BRL",
+                "name": "Euro/Real Brasileiro",
+                "high": "6.85",
+                "low": "6.82",
+                "varBid": "0.01",
+                "pctChange": "0.15",
+                "bid": "6.8390",
+                "ask": "6.8420",
+                "timestamp": "1618315048",
+                "create_date": "2021-04-13 08:57:28"
+              }
+            }
+            """
+              .trimIndent()
+          )
+      )
+
+      val secondAttempt =
+        dataSource.fetchLastQuotes(listOf("USD-BRL", "XYZ-BRL", "EUR-BRL"), fetchedAtMillis = 999L)
+      assertEquals("/json/last/USD-BRL,EUR-BRL", mockWebServer.takeRequest().path)
+      assertTrue(secondAttempt is RemoteResult.Success)
+      assertEquals(
+        listOf("USD-BRL", "EUR-BRL"),
+        (secondAttempt as RemoteResult.Success).data.map { it.pairCode },
+      )
+      assertEquals(2, mockWebServer.requestCount)
+
+      val blockedSingle = dataSource.fetchLastQuotes(listOf("XYZ-BRL"))
+      assertTrue((blockedSingle as RemoteResult.Error).error is RemoteError.CoinNotExists)
+      assertEquals(2, mockWebServer.requestCount)
+    }
+
+  @Test
+  fun `fetchLastQuotes does not mark any pair invalid when 404 CoinNotExists batch message omits pair code`() =
+    runBlocking {
+      availablePairDao.upsertAll(
+        listOf(
+          AvailablePairEntity(
+            pairCode = "USD-BRL",
+            baseCode = "USD",
+            quoteCode = "BRL",
+            apiDescription = "Dólar Americano/Real Brasileiro",
+            friendlyName = "Dólar Americano",
+            isAvailable = true,
+            updatedAtMillis = 100L,
+          ),
+          AvailablePairEntity(
+            pairCode = "EUR-BRL",
+            baseCode = "EUR",
+            quoteCode = "BRL",
+            apiDescription = "Euro/Real Brasileiro",
+            friendlyName = "Euro",
+            isAvailable = true,
+            updatedAtMillis = 100L,
+          ),
+        )
+      )
+
+      mockWebServer.enqueue(
+        MockResponse()
+          .setResponseCode(404)
+          .setBody("""{"status":404,"code":"CoinNotExists","message":"moeda nao encontrada"}""")
+      )
+
+      val result = dataSource.fetchLastQuotes(listOf("USD-BRL", "EUR-BRL"))
+      assertTrue(result is RemoteResult.Error)
+      val coinError = (result as RemoteResult.Error).error as RemoteError.CoinNotExists
+      assertEquals(null, coinError.pairCode)
+      assertTrue(availablePairDao.isPairSupported("USD-BRL"))
+      assertTrue(availablePairDao.isPairSupported("EUR-BRL"))
     }
 
   @Test
@@ -212,7 +332,7 @@ class AwesomeApiRemoteDataSourceTest {
     }
 
   @Test
-  fun `syncAvailableBrlCatalog persists JSON catalog into AvailablePairDao`() = runBlocking {
+  fun `syncAvailableBrlCatalog persists experimental JSON catalog when valid`() = runBlocking {
     mockWebServer.enqueue(
       MockResponse()
         .setResponseCode(200)
@@ -238,10 +358,9 @@ class AwesomeApiRemoteDataSourceTest {
   }
 
   @Test
-  fun `syncAvailableBrlCatalog falls back to official xml available when json available fails or returns XML`() =
+  fun `syncAvailableBrlCatalog falls back to official xml available when json is invalid and persists in Room`() =
     runBlocking {
-      // Simula /json/available retornando 404 (ou não confiável) seguido de /xml/available oficial
-      mockWebServer.enqueue(MockResponse().setResponseCode(404).setBody("Not Found"))
+      mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("{invalid-json"))
       mockWebServer.enqueue(
         MockResponse()
           .setResponseCode(200)
@@ -252,6 +371,7 @@ class AwesomeApiRemoteDataSourceTest {
               <USD-BRL>Dólar Americano/Real Brasileiro</USD-BRL>
               <CAD-BRL>Dólar Canadense/Real Brasileiro</CAD-BRL>
               <EUR-USD>Euro/Dólar Americano</EUR-USD>
+              <USDT-BRL>Tether/Real Brasileiro</USDT-BRL>
             </xml>
             """
               .trimIndent()
@@ -262,13 +382,14 @@ class AwesomeApiRemoteDataSourceTest {
 
       assertEquals("/json/available", mockWebServer.takeRequest().path)
       assertEquals("/xml/available", mockWebServer.takeRequest().path)
+      assertEquals(2, mockWebServer.requestCount)
       assertTrue(result is RemoteResult.Success)
       val stored = availablePairDao.observeSupportedBrlPairs().first()
       assertEquals(listOf("CAD-BRL", "USD-BRL"), stored.map { it.pairCode })
     }
 
   @Test
-  fun `syncAvailableBrlCatalog preserves existing cached pairs when both endpoints fail`() =
+  fun `syncAvailableBrlCatalog does NOT trigger XML fallback on HTTP 429 or HTTP 500 and preserves Room cache`() =
     runBlocking {
       availablePairDao.upsertAll(
         listOf(
@@ -284,12 +405,47 @@ class AwesomeApiRemoteDataSourceTest {
         )
       )
 
-      mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("Error"))
-      mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("Error"))
+      mockWebServer.enqueue(MockResponse().setResponseCode(429).setBody("""{"status":429}"""))
+      val rateLimitResult = dataSource.syncAvailableBrlCatalog()
+      assertEquals(429, ((rateLimitResult as RemoteResult.Error).error as RemoteError.HttpError).httpCode)
+      assertEquals(1, mockWebServer.requestCount)
+      assertEquals(1, availablePairDao.countSupportedBrlPairs())
+
+      mockWebServer.enqueue(MockResponse().setResponseCode(500).setBody("Server Error"))
+      val serverErrorResult = dataSource.syncAvailableBrlCatalog()
+      assertEquals(
+        500,
+        ((serverErrorResult as RemoteResult.Error).error as RemoteError.ServerError).httpCode,
+      )
+      assertEquals(2, mockWebServer.requestCount)
+      assertEquals(1, availablePairDao.countSupportedBrlPairs())
+    }
+
+  @Test
+  fun `syncAvailableBrlCatalog preserves existing cached pairs when both JSON and XML payloads are invalid`() =
+    runBlocking {
+      availablePairDao.upsertAll(
+        listOf(
+          AvailablePairEntity(
+            pairCode = "USD-BRL",
+            baseCode = "USD",
+            quoteCode = "BRL",
+            apiDescription = "Dólar Americano/Real Brasileiro",
+            friendlyName = "Dólar Americano",
+            isAvailable = true,
+            updatedAtMillis = 100L,
+          )
+        )
+      )
+
+      mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("{invalid-json"))
+      mockWebServer.enqueue(MockResponse().setResponseCode(200).setBody("<xml><broken>"))
 
       val result = dataSource.syncAvailableBrlCatalog()
       assertTrue(result is RemoteResult.Error)
-      assertTrue((result as RemoteResult.Error).error is RemoteError.ServerError)
+      assertTrue((result as RemoteResult.Error).error is RemoteError.InvalidResponse)
+      assertEquals(2, mockWebServer.requestCount)
       assertEquals(1, availablePairDao.countSupportedBrlPairs())
+      assertTrue(availablePairDao.isPairSupported("USD-BRL"))
     }
 }

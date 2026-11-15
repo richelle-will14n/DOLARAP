@@ -15,7 +15,7 @@ class AvailableCatalogParserTest {
   private val parser = AvailableCatalogParser(moshi)
 
   @Test
-  fun `parseJsonToBrlPairs filters strictly BRL pairs and enriches friendly name`() {
+  fun `parseJsonToBrlPairs filters strictly three-letter BRL pairs and rejects malformed codes or blank values`() {
     val json =
       """
       {
@@ -24,6 +24,12 @@ class AvailableCatalogParserTest {
         "EUR-USD": "Euro/Dólar Americano",
         "USD-BRLT": "Dólar Americano/Real Brasileiro Turismo",
         "USD-BRLPTAX": "Dólar Americano/Real Brasileiro PTAX",
+        "USDT-BRL": "Tether/Real Brasileiro",
+        "US-BRL": "Código curto",
+        "123-BRL": "Código numérico",
+        "US1-BRL": "Código alfanumérico",
+        "CAD-BRL": "   ",
+        "GBP-BRL": null,
         "INVALID": "Ignorar"
       }
       """
@@ -53,7 +59,7 @@ class AvailableCatalogParserTest {
   }
 
   @Test
-  fun `parseXmlToBrlPairs parses standard AwesomeAPI tag-per-pair XML and filters BRL`() {
+  fun `parseXmlToBrlPairs parses official tag-per-pair XML and rejects non-three-letter codes`() {
     val xml =
       """
       <?xml version="1.0" encoding="utf-8"?>
@@ -62,6 +68,10 @@ class AvailableCatalogParserTest {
         <CLP-BRL>Peso Chileno/Real Brasileiro</CLP-BRL>
         <BTC-USD>Bitcoin/Dólar Americano</BTC-USD>
         <USD-BRLT>Dólar Americano/Real Brasileiro Turismo</USD-BRLT>
+        <USD-BRLPTAX>Dólar Americano/Real Brasileiro PTAX</USD-BRLPTAX>
+        <USDT-BRL>Tether/Real Brasileiro</USDT-BRL>
+        <AB-BRL>Código curto</AB-BRL>
+        <EUR-BRL></EUR-BRL>
       </xml>
       """
         .trimIndent()
@@ -75,7 +85,7 @@ class AvailableCatalogParserTest {
   }
 
   @Test
-  fun `parseXmlToBrlPairs also supports item element structure and rejects invalid XML`() {
+  fun `parseXmlToBrlPairs supports item elements and rejects invalid XML or invalid codes`() {
     val itemXml =
       """
       <?xml version="1.0" encoding="UTF-8"?>
@@ -84,6 +94,11 @@ class AvailableCatalogParserTest {
           <code>UYU</code>
           <codein>BRL</codein>
           <name>Peso Uruguaio/Real Brasileiro</name>
+        </item>
+        <item>
+          <code>USDT</code>
+          <codein>BRL</codein>
+          <name>Tether/Real Brasileiro</name>
         </item>
         <item>
           <code>EUR</code>

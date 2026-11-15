@@ -1,7 +1,9 @@
 package com.aistudio.dolarap.data.remote.mapper
 
 import com.aistudio.dolarap.data.local.entity.QuoteEntity
+import com.aistudio.dolarap.data.remote.AwesomeApiConfig
 import com.aistudio.dolarap.data.remote.dto.QuoteDto
+import java.math.BigDecimal
 import java.util.Locale
 
 class QuoteRemoteMapper {
@@ -16,15 +18,19 @@ class QuoteRemoteMapper {
     dto: QuoteDto,
     fetchedAtMillis: Long,
   ): QuoteEntity? {
-    val code = dto.code?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return null
-    val codeIn = dto.codein?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.isNotEmpty() } ?: return null
-    val bid = normalizeDecimalString(dto.bid) ?: return null
-    val ask = normalizeDecimalString(dto.ask) ?: return null
+    val code =
+      dto.code?.trim()?.uppercase(Locale.ROOT)?.takeIf { it.matches(THREE_LETTER_CODE_REGEX) }
+        ?: return null
+    val codeIn =
+      dto.codein?.trim()?.uppercase(Locale.ROOT)?.takeIf { it == AwesomeApiConfig.TARGET_QUOTE_CODE }
+        ?: return null
+    val bid = normalizePositiveDecimalString(dto.bid) ?: return null
+    val ask = normalizePositiveDecimalString(dto.ask) ?: return null
 
     val varBid = normalizeDecimalString(dto.varBid) ?: "0"
     val pctChange = normalizeDecimalString(dto.pctChange) ?: "0"
-    val high = normalizeDecimalString(dto.high) ?: bid
-    val low = normalizeDecimalString(dto.low) ?: bid
+    val high = normalizePositiveDecimalString(dto.high) ?: bid
+    val low = normalizePositiveDecimalString(dto.low) ?: bid
     val timestampSeconds = dto.timestamp?.trim()?.toLongOrNull() ?: 0L
 
     return QuoteEntity(
@@ -44,9 +50,19 @@ class QuoteRemoteMapper {
     )
   }
 
+  private fun normalizePositiveDecimalString(raw: String?): String? {
+    val trimmed = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val parsed = trimmed.toBigDecimalOrNull() ?: return null
+    return if (parsed > BigDecimal.ZERO) trimmed else null
+  }
+
   private fun normalizeDecimalString(raw: String?): String? {
     val trimmed = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     // Valida sintaxe decimal exata sem converter para Double/Float
     return if (trimmed.toBigDecimalOrNull() != null) trimmed else null
+  }
+
+  private companion object {
+    val THREE_LETTER_CODE_REGEX = Regex("^[A-Z]{3}$")
   }
 }

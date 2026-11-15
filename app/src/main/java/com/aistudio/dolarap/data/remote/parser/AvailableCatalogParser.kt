@@ -159,19 +159,16 @@ class AvailableCatalogParser(
     rawDescription: String?,
     updatedAtMillis: Long,
   ): AvailablePairEntity? {
-    val parts = rawPairKey.trim().uppercase(Locale.ROOT).split("-")
-    if (parts.size != 2) return null
+    val normalizedPair = rawPairKey.trim().uppercase(Locale.ROOT)
+    if (!normalizedPair.matches(VALID_BRL_PAIR_REGEX)) return null
 
-    val baseCode = parts[0].trim()
-    val quoteCode = parts[1].trim()
-    if (baseCode.isEmpty() || quoteCode != AwesomeApiConfig.TARGET_QUOTE_CODE) return null
-
-    val pairCode = "$baseCode-$quoteCode"
-    val cleanDescription = rawDescription?.trim().orEmpty().ifEmpty { pairCode }
+    val cleanDescription = rawDescription?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    val baseCode = normalizedPair.substringBefore("-")
+    val quoteCode = AwesomeApiConfig.TARGET_QUOTE_CODE
     val friendlyName = ComplementaryCurrencyCatalog.resolveFriendlyName(baseCode, cleanDescription)
 
     return AvailablePairEntity(
-      pairCode = pairCode,
+      pairCode = normalizedPair,
       baseCode = baseCode,
       quoteCode = quoteCode,
       apiDescription = cleanDescription,
@@ -179,5 +176,9 @@ class AvailableCatalogParser(
       isAvailable = true,
       updatedAtMillis = updatedAtMillis,
     )
+  }
+
+  private companion object {
+    val VALID_BRL_PAIR_REGEX = Regex("^[A-Z]{3}-BRL$")
   }
 }

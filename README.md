@@ -34,10 +34,10 @@ Aplicativo Android nativo para consulta e conversão de cotações de moedas est
   - **Seed inicial e catálogo complementar (`E02`):** `DolarapDatabase` semeia de forma atômica e idempotente as **10 moedas padrão** (`USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY`, `MXN`); `ComplementaryCurrencyCatalog` enriquece nomes amigáveis em PT-BR e normalização de busca.
 - **Integração remota com a AwesomeAPI (`E03`):**
   - **Configuração HTTP centralizada (`AwesomeApiConfig`, `NetworkModule`):** Retrofit + OkHttpClient (timeouts de 15s e `HttpLoggingInterceptor` nível `BASIC` em debug) + Moshi (`KotlinJsonAdapterFactory` e codegen KSP).
-  - **Consulta de cotações (`AwesomeApiService.getLastQuotes`, `QuoteRemoteMapper`):** Consome `/json/last/{pairs}` para múltiplos pares em lote, validando campos obrigatórios e sintaxe decimal via `toBigDecimalOrNull()` e preservando `bid`, `ask`, `varBid`, `pctChange`, `high` e `low` como strings exatas em `QuoteEntity` (sem conversão para `Double`/`Float`).
-  - **Catálogo de moedas disponíveis com fallback oficial (`AvailableCatalogParser`, `AwesomeApiRemoteDataSource`):** Tenta `/json/available` (JSON) e aciona fallback automático para o endpoint oficialmente documentado `/xml/available` quando o JSON falha ou vem inválido/vazio; filtra estritamente pares `*-BRL` (excluindo `USD-BRLT`, `USD-BRLPTAX` e cruzamentos sem `BRL`), enriquece `friendlyName` e persiste via `AvailablePairDao`.
-  - **Tratamento defensivo de erros (`RemoteResult`, `RemoteError`, `ApiErrorDto`):** Trata desconexão, timeout, HTTP 404 (`CoinNotExists` — marcando o par como indisponível no Room e bloqueando novas requisições repetidas na sessão), HTTP 429, 5xx e payloads vazios/malformados sem derrubar o app nem apagar dados locais.
-- **Testes automatizados (`E01`–`E03`):** 29 testes unitários e de integração local via JUnit 4 + `MockWebServer` + Robolectric aprovados em `gradle :app:testDebugUnitTest`.
+  - **Consulta de cotações (`AwesomeApiService.getLastQuotes`, `QuoteRemoteMapper`):** Consome `/json/last/{pairs}` para múltiplos pares válidos no padrão `^[A-Z]{3}-BRL$`, validando `bid`/`ask` positivos via `toBigDecimalOrNull()` e preservando `bid`, `ask`, `varBid`, `pctChange`, `high` e `low` como strings exatas em `QuoteEntity` (sem conversão para `Double`/`Float`).
+  - **Catálogo oficial com tentativa experimental JSON (`AvailableCatalogParser`, `AwesomeApiRemoteDataSource`):** Trata `/xml/available` como fonte oficialmente documentada pela AwesomeAPI e `/json/available` apenas como tentativa experimental. Se o JSON falhar por erro de endpoint ou formato inválido/incompatível, aciona o fallback oficial `/xml/available`; **não** dispara segunda requisição em HTTP `429`, HTTP `5xx`, timeout ou ausência de conexão, preservando o cache existente no Room. Aceita estritamente `^[A-Z]{3}-BRL$` com descrição válida (rejeitando pares cruzados, turismo, PTAX e códigos fora de 3 letras).
+  - **Tratamento defensivo de erros (`RemoteResult`, `RemoteError`, `ApiErrorDto`):** Trata desconexão, timeout, HTTP 404 (`CoinNotExists` em consulta simples ou em lote — identificando e bloqueando apenas o par comprovadamente inexistente quando a resposta permitir, preservando todos os pares válidos), HTTP 429, 5xx e payloads vazios/malformados sem derrubar o app nem apagar dados locais.
+- **Testes automatizados (`E01`–`E03`):** 32 testes unitários e de integração local via JUnit 4 + `MockWebServer` + Robolectric aprovados em `gradle :app:testDebugUnitTest`.
 
 ### Planejado para etapas futuras (ainda NÃO implementado)
 - **Camada `domain` e Repositórios (`E04`):** Modelos de domínio puros, calculadora monetária em `BigDecimal` utilizando `bid`, `QuoteRepositoryImpl` / `CatalogRepositoryImpl` (SSOT Room), casos de uso de cotações, pesquisa/adição/remoção, favoritos e regra de obsolescência de 15 minutos.
@@ -126,9 +126,9 @@ O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.ais
 ## Integração com a AwesomeAPI (Implementada na E03)
 
 - **Provedor:** AwesomeAPI — API de Cotações de Moedas (`https://docs.awesomeapi.com.br/api-de-moedas`)
-- **Cotações em lote:** `GET https://economia.awesomeapi.com.br/json/last/{pairs}` (ex.: `USD-BRL,EUR-BRL`)
-- **Catálogo de pares suportados:** Tenta `GET https://economia.awesomeapi.com.br/json/available` e, em caso de resposta não-JSON, JSON inválido/vazio ou erro HTTP, executa fallback automático para o endpoint oficialmente documentado `GET https://economia.awesomeapi.com.br/xml/available`.
-- **Proteção contra bloqueio por HTTP 404 (`CoinNotExists`):** Pares que retornarem `404 CoinNotExists` são marcados como indisponíveis no Room (`AvailablePairDao`) e bloqueados em memória na sessão para impedir repetição de requisições inválidas.
+- **Cotações em lote:** `GET https://economia.awesomeapi.com.br/json/last/{pairs}` (ex.: `USD-BRL,EUR-BRL`), aceitando somente pares no padrão `^[A-Z]{3}-BRL$`.
+- **Catálogo de pares suportados:** `/xml/available` é a **fonte oficialmente documentada**; `/json/available` é executado apenas como **tentativa experimental**. Caso a tentativa experimental retorne erro de endpoint ou payload inválido/incompatível, ocorre fallback automático para `GET https://economia.awesomeapi.com.br/xml/available`. Em HTTP `429`, HTTP `5xx`, timeout ou ausência de conexão, não há segunda requisição e o cache do Room permanece preservado.
+- **Proteção contra bloqueio por HTTP 404 (`CoinNotExists`):** Em respostas 404 (inclusive em lote), somente o par comprovadamente identificado pela resposta é marcado como indisponível no Room (`AvailablePairDao`) e bloqueado na sessão; os demais pares válidos são preservados integralmente e não há marcação em massa sem evidência.
 
 ---
 
@@ -156,12 +156,12 @@ Os resultados detalhados estão registrados em [`TEST_RESULTS.md`](TEST_RESULTS.
   - `ComplementaryCurrencyCatalogTest` (4 testes unitários JUnit)
   - `DolarapDatabaseIntegrationTest` (7 testes de integração Room via Robolectric)
   - `KoinDatabaseModuleTest` (1 teste de integração DI + Room via Robolectric)
-- **Etapa E03 (15 testes):**
-  - `QuoteRemoteMapperTest` (3 testes unitários JUnit): mapeamento multi-par com preservação exata de decimais em string, rejeição de DTOs inválidos e desserialização de `ApiErrorDto`.
-  - `AvailableCatalogParserTest` (4 testes unitários JUnit): filtragem estrita de `*-BRL` em JSON e XML (`<xml><USD-BRL>...</USD-BRL></xml>` e `<item>`), enriquecimento de nomes e rejeição de payloads inválidos.
-  - `AwesomeApiRemoteDataSourceTest` (7 testes de integração HTTP + Room via `MockWebServer` + Robolectric): busca multi-par, erro `404 CoinNotExists` com bloqueio de novas chamadas, HTTP `429`/`500`/JSON vazio/malformado, timeout e offline, catálogo JSON, fallback automático para `/xml/available` e preservação do cache local em falhas.
+- **Etapa E03 (18 testes):**
+  - `QuoteRemoteMapperTest` (3 testes unitários JUnit): mapeamento multi-par com preservação exata de decimais em string, rejeição de DTOs inválidos/não-BRL/fora de 3 letras/preço não positivo e desserialização de `ApiErrorDto`.
+  - `AvailableCatalogParserTest` (4 testes unitários JUnit): filtragem estrita de `^[A-Z]{3}-BRL$` em JSON e XML (`<xml><USD-BRL>...</USD-BRL></xml>` e `<item>`), rejeição de códigos fora de 3 letras/turismo/PTAX/valores vazios e enriquecimento de nomes.
+  - `AwesomeApiRemoteDataSourceTest` (10 testes de integração HTTP + Room via `MockWebServer` + Robolectric): busca multi-par, rejeição local de pares inválidos sem chamada HTTP, erro `404 CoinNotExists` em lote preservando pares válidos e bloqueando apenas o par identificado (e sem marcar nada se a mensagem omitir o código), HTTP `429`/`500`/JSON vazio/malformado, timeout e offline, catálogo JSON experimental, fallback para `/xml/available` em JSON inválido com persistência Room, ausência de fallback em HTTP `429`/`500` e preservação do cache local em payloads inválidos.
   - `KoinNetworkModuleTest` (1 teste de integração DI via Robolectric): resolução de `Moshi`, `OkHttpClient`, `Retrofit`, `AwesomeApiService`, mapper, parser e singleton `AwesomeApiRemoteDataSource`.
-- **Total executado na última bateria (`2026-11-15`):** 29 testes executados em `:app:testDebugUnitTest` (29 aprovados, 0 falhas).
+- **Total executado na última bateria (`2026-11-15`):** 32 testes executados em `:app:testDebugUnitTest` (32 aprovados, 0 falhas).
 - **Testes instrumentados (`androidTest`):** Não executados até o momento por ausência de emulador Android/ADB no ambiente de build.
 
 ---

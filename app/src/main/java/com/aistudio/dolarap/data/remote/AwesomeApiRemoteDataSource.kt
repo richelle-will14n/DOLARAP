@@ -96,10 +96,13 @@ class AwesomeApiRemoteDataSource(
   }
 
   /**
-   * Consulta o catálogo de pares disponíveis na AwesomeAPI.
-   * Tenta `/json/available`; caso retorne erro HTTP, formato não-JSON, JSON inválido ou vazio,
-   * executa automaticamente o fallback oficial documentado `/xml/available` e persiste os pares
-   * `*-BRL` validados no [AvailablePairDao].
+   * Sincroniza o catálogo de pares disponíveis na AwesomeAPI para BRL.
+   *
+   * `/xml/available` é a fonte oficialmente documentada pela AwesomeAPI. `/json/available` é
+   * tratado somente como tentativa experimental; se falhar por erro de endpoint ou formato
+   * inválido/incompatível, aciona o fallback oficial `/xml/available`. Não executa segunda
+   * requisição em HTTP 429 (rate limit), HTTP 5xx (indisponibilidade do servidor), timeout ou
+   * ausência de conexão, preservando o cache existente no Room em caso de falha.
    */
   suspend fun syncAvailableBrlCatalog(
     updatedAtMillis: Long = System.currentTimeMillis(),
@@ -112,7 +115,7 @@ class AwesomeApiRemoteDataSource(
     }
 
     val jsonError = (jsonAttempt as RemoteResult.Error).error
-    if (jsonError is RemoteError.NoConnection || jsonError is RemoteError.Timeout) {
+    if (!shouldFallbackToXml(jsonError)) {
       return jsonAttempt
     }
 
@@ -123,6 +126,19 @@ class AwesomeApiRemoteDataSource(
     }
     return xmlAttempt
   }
+
+  private fun shouldFallbackToXml(error: RemoteError): Boolean =
+    when (error) {
+      RemoteError.NoConnection,
+      RemoteError.Timeout,
+      is RemoteError.ServerError -> false
+      is RemoteError.HttpError -> error.httpCode != 429
+      is RemoteError.InvalidResponse,
+      is RemoteError.EmptyOrIncompleteResponse,
+      is RemoteError.Unexpected -> true
+      is RemoteError.CoinNotExists,
+      is RemoteError.InvalidRequest -> false
+    }
 
   private suspend fun fetchAndParseCatalogJson(
     updatedAtMillis: Long,
@@ -165,7 +181,7 @@ class AwesomeApiRemoteDataSource(
         parsedError?.code.equals(AwesomeApiConfig.ERROR_CODE_COIN_NOT_EXISTS, ignoreCase = true)
     ) {
       val missingPair =
-        extractMissingPairFromMessage(parsedError?.message)
+        extractMissingPairFromMessage(parsedError?.message, requestedPairs)
           ?: requestedPairs.singleOrNull()
       if (missingPair != null) {
         sessionInvalidPairs.add(missingPair)
@@ -215,9 +231,23 @@ class AwesomeApiRemoteDataSource(
     return runCatching { apiErrorAdapter.fromJson(raw) }.getOrNull()
   }
 
-  private fun extractMissingPairFromMessage(message: String?): String? {
+  private fun extractMissingPairFromMessage(
+    message: String?,
+    requestedPairs: List<String>,
+  ): String? {
     if (message.isNullOrBlank()) return null
-    return PAIR_FIND_REGEX.find(message.uppercase(Locale.ROOT))?.value
+    val upperMessage = message.uppercase(Locale.ROOT)
+    val requestedSet = requestedPairs.toSet()
+
+    val hyphenatedMatch =
+      PAIR_FIND_REGEX.findAll(upperMessage)
+        .map { it.value }
+        .firstOrNull { it in requestedSet }
+    if (hyphenatedMatch != null) return hyphenatedMatch
+
+    return PAIR_COMPACT_FIND_REGEX.findAll(upperMessage)
+      .map { "${it.groupValues[1]}-${AwesomeApiConfig.TARGET_QUOTE_CODE}" }
+      .firstOrNull { it in requestedSet }
   }
 
   private fun mapException(exception: Exception): RemoteResult.Error =
@@ -237,7 +267,8 @@ class AwesomeApiRemoteDataSource(
     }
 
   private companion object {
-    val PAIR_REGEX = Regex("^[A-Z0-9]{2,10}-[A-Z0-9]{2,10}$")
-    val PAIR_FIND_REGEX = Regex("[A-Z0-9]{2,10}-[A-Z0-9]{2,10}")
+    val PAIR_REGEX = Regex("^[A-Z]{3}-BRL$")
+    val PAIR_FIND_REGEX = Regex("\\b[A-Z]{3}-BRL\\b")
+    val PAIR_COMPACT_FIND_REGEX = Regex("\\b([A-Z]{3})BRL\\b")
   }
 }

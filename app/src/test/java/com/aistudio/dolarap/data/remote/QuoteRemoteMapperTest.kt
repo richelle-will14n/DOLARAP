@@ -72,14 +72,22 @@ class QuoteRemoteMapperTest {
   }
 
   @Test
-  fun `rejects incomplete or non-numeric quote DTOs safely`() {
+  fun `rejects incomplete, non-numeric, non-positive, or non-three-letter BRL quote DTOs`() {
     val missingBid = QuoteDto(code = "USD", codein = "BRL", bid = null, ask = "5.70")
     val invalidBid = QuoteDto(code = "USD", codein = "BRL", bid = "N/A", ask = "5.70")
+    val zeroBid = QuoteDto(code = "USD", codein = "BRL", bid = "0", ask = "5.70")
+    val negativeBid = QuoteDto(code = "USD", codein = "BRL", bid = "-1.20", ask = "5.70")
     val missingCode = QuoteDto(code = "", codein = "BRL", bid = "5.69", ask = "5.70")
+    val fourLetterCode = QuoteDto(code = "USDT", codein = "BRL", bid = "5.69", ask = "5.70")
+    val nonBrlQuote = QuoteDto(code = "EUR", codein = "USD", bid = "1.08", ask = "1.09")
 
     assertNull(mapper.mapSingleOrNull(missingBid, 1000L))
     assertNull(mapper.mapSingleOrNull(invalidBid, 1000L))
+    assertNull(mapper.mapSingleOrNull(zeroBid, 1000L))
+    assertNull(mapper.mapSingleOrNull(negativeBid, 1000L))
     assertNull(mapper.mapSingleOrNull(missingCode, 1000L))
+    assertNull(mapper.mapSingleOrNull(fourLetterCode, 1000L))
+    assertNull(mapper.mapSingleOrNull(nonBrlQuote, 1000L))
   }
 
   @Test
