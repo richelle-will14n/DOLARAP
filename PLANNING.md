@@ -1,6 +1,6 @@
 # PLANNING — DOLARAP
 
-> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E03 (E00, E01 e E02 aprovadas; E03 implementada e testada, aguardando revisão externa; E04–E07 planejadas).
+> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E04 (E00–E03 aprovadas; E04 implementada e testada, aguardando revisão externa; E05–E07 planejadas).
 
 ## 1. Arquitetura Proposta
 
@@ -39,7 +39,7 @@ presentation (Compose + ViewModels + StateFlow)
 | **java.math.BigDecimal** | Cálculos monetários | Evita erros de precisão binária inerentes a `Double`/`Float` em conversões financeiras. |
 | **JUnit (e Coroutines Test / Robolectric se aplicável)** | Testes unitários | Verificação rápida e determinística de casos de uso, regras de negócio, mappers e repositório na JVM. |
 
-> **Nota sobre o estado das dependências (após E03):** O projeto já possui configurados no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 (com codegen KSP) + OkHttp 4.10.0 (+ MockWebServer 4.10.0 em testes)`, `WorkManager 2.10.1`, `Coroutines 1.10.2`, `JUnit 4.13.2` e `Robolectric 4.16.1`. Até a E03, estão implementados a fundação Compose/Koin, a camada local Room e a camada remota da AwesomeAPI (`data/remote` + `NetworkModule`).
+> **Nota sobre o estado das dependências (após E04):** O projeto já possui configurados no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 (com codegen KSP) + OkHttp 4.10.0 (+ MockWebServer 4.10.0 em testes)`, `WorkManager 2.10.1`, `Coroutines 1.10.2`, `JUnit 4.13.2` e `Robolectric 4.16.1`. Até a E04, estão implementados a fundação Compose/Koin, a camada local Room, a camada remota da AwesomeAPI (`data/remote` + `NetworkModule`), a camada pura de domínio (`domain`) e os repositórios SSOT (`data/repository` + `DataModule` + `DomainModule`).
 
 ---
 
@@ -52,29 +52,32 @@ com.aistudio.dolarap
 ├── DolarapApplication.kt               # Inicialização do Koin (e WorkManager periódico na E06)
 ├── MainActivity.kt                     # Entry point Compose (provisório na E01; Navigation na E05)
 ├── di/
-│   ├── AppModule.kt                    # Lista de módulos Koin ativos (databaseModule, networkModule)
+│   ├── AppModule.kt                    # Lista de módulos Koin ativos (database, network, data, domain)
 │   ├── DatabaseModule.kt               # (E02) Provisão singleton de DolarapDatabase e DAOs
 │   ├── NetworkModule.kt                # (E03) Moshi, OkHttpClient, Retrofit, AwesomeApiService e RemoteDataSource
-│   ├── DomainModule.kt                 # (Planejado E04) Casos de uso e calculadora monetária
-│   ├── DataModule.kt                   # (Planejado E04/E06) Repositories e WorkManager Scheduler
+│   ├── DataModule.kt                   # (E04) SystemTimeProvider, Mappers e Repositories SSOT (Worker na E06)
+│   ├── DomainModule.kt                 # (E04) CurrencyConverter, QuoteFreshnessEvaluator e 9 UseCases
 │   └── PresentationModule.kt           # (Planejado E05) ViewModels
-├── domain/
+├── domain/                             # (E04) Camada Kotlin/JDK pura
 │   ├── model/
-│   │   ├── CurrencyQuote.kt            # Modelo de domínio de cotação (BigDecimal, timestamps, isFavorite, isDefault)
+│   │   ├── CurrencyModels.kt           # CurrencyDefaults, QuoteFreshnessStatus, QuoteRate, CurrencyQuote, SyncStatus, DashboardQuotesSnapshot
 │   │   ├── AvailableCurrency.kt        # Item do catálogo de moedas disponíveis e seu par suportado
-│   │   ├── ConversionResult.kt         # Resultado de conversão (valor origem, destino, taxa bid utilizada, status)
-│   │   ├── SyncStatus.kt               # Última atualização, isStale (>15 min), estado de rede/erro
-│   │   └── DomainError.kt              # Erros tipados de domínio (NoConnection, UnsupportedPair, ApiBlocked, etc.)
+│   │   ├── ConversionResult.kt         # Resultado de conversão (taxas bid/ask, effectiveRate, casas decimais, isStale)
+│   │   └── DomainResult.kt             # DomainResult<T> e DomainError (NoConnection, Timeout, UnsupportedPair, etc.)
 │   ├── repository/
 │   │   ├── QuoteRepository.kt          # Contrato para observar/sincronizar cotações e gerenciar moedas/favoritos
 │   │   └── CatalogRepository.kt        # Contrato para catálogo de moedas disponíveis e validação de suporte
 │   ├── service/
-│   │   ├── CurrencyConverter.kt        # Regra pura de cálculo com BigDecimal e taxa bid
-│   │   └── SyncScheduler.kt            # Abstração de agendamento (periódico 6h e retry com rede)
+│   │   ├── CurrencyConverter.kt        # (E04) Regra pura de cálculo com BigDecimal e taxa bid
+│   │   ├── QuoteFreshnessEvaluator.kt  # (E04) Regra de 15 minutos (FRESH / STALE / UNAVAILABLE)
+│   │   ├── TimeProvider.kt             # (E04) Abstração pura de relógio para testabilidade
+│   │   └── SyncScheduler.kt            # (Planejado E06) Abstração de agendamento (periódico 6h e retry com rede)
 │   └── usecase/
 │       ├── ObserveDashboardQuotesUseCase.kt
 │       ├── RefreshQuotesUseCase.kt
+│       ├── ObserveAvailableCurrenciesUseCase.kt
 │       ├── SearchAvailableCurrenciesUseCase.kt
+│       ├── RefreshCatalogUseCase.kt
 │       ├── AddCurrencyUseCase.kt
 │       ├── RemoveCurrencyUseCase.kt
 │       ├── ToggleFavoriteUseCase.kt
@@ -95,6 +98,9 @@ com.aistudio.dolarap
 │   │   │   └── SelectedCurrencyWithQuote.kt
 │   │   └── catalog/
 │   │       └── ComplementaryCurrencyCatalog.kt # Nomes amigáveis PT-BR e símbolos complementares (sem burlar suporte da API)
+│   ├── mapper/                         # (E04)
+│   │   ├── QuoteEntityMapper.kt        # Entidades Room -> Modelos de Domínio (BigDecimal + frescor)
+│   │   └── RemoteErrorMapper.kt        # RemoteError -> DomainError + tag persistida em sync_metadata
 │   ├── remote/
 │   │   ├── AwesomeApiConfig.kt         # (E03) URL base, endpoints, timeouts e constantes
 │   │   ├── AwesomeApiService.kt        # (E03) Endpoints /json/last/{pairs}, /json/available e /xml/available
@@ -108,9 +114,11 @@ com.aistudio.dolarap
 │   │   │   └── RemoteResult.kt         # (E03) RemoteResult<T> e RemoteError tipados na camada data
 │   │   └── parser/
 │   │       └── AvailableCatalogParser.kt # (E03) Parsing defensivo JSON e fallback XML (/xml/available)
-│   ├── repository/                     # (Planejado E04)
-│   │   ├── QuoteRepositoryImpl.kt
-│   │   └── CatalogRepositoryImpl.kt
+│   ├── repository/                     # (E04)
+│   │   ├── QuoteRepositoryImpl.kt      # SSOT Room + deduplicação de sync + lote 25 pares + proteção padrão
+│   │   └── CatalogRepositoryImpl.kt    # SSOT Room + deduplicação de catálogo + validação *-BRL
+│   ├── time/                           # (E04)
+│   │   └── SystemTimeProvider.kt
 │   └── worker/                         # (Planejado E06)
 │       ├── SyncQuotesWorker.kt         # CoroutineWorker para sincronização em background
 │       └── WorkManagerSyncScheduler.kt # Agendamento único (periódico 6h + retry CONNECTED)

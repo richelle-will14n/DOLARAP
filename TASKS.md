@@ -47,29 +47,29 @@ Legenda de status:
 
 ---
 
-## E03 — Integração com a API (AwesomeAPI) *(Implementação e testes concluídos — aguardando revisão externa)*
+## E03 — Integração com a API (AwesomeAPI) *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E03-T01** | Configurar Retrofit + OkHttpClient + Moshi com timeouts e logging | Cliente HTTP configurado no `networkModule` (`AppModule`) apontando para `AwesomeApiConfig.BASE_URL` (`https://economia.awesomeapi.com.br/`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E03-T02** | Implementar DTOs e endpoint `/json/last/{pairs}` (`AwesomeApiService`) | Chamada dinâmica para múltiplos pares (ex.: `USD-BRL,EUR-BRL`) desserializando o mapa de cotações (`QuoteDto`) preservando decimais em string. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E03-T03** | Implementar consulta e parser do catálogo oficial `/xml/available` com tentativa experimental `/json/available` | `/xml/available` é a fonte oficial documentada; `/json/available` atua apenas como tentativa experimental com fallback XML (sem fallback em 429/5xx/timeout/offline). Parser aceita estritamente `^[A-Z]{3}-BRL$` e persiste no `AvailablePairDao` sem apagar cache em falha. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E03-T04** | Implementar tratamento de erros HTTP e `CoinNotExists` (404) em lote | Erros de rede, timeout, HTTP 404 (`CoinNotExists` — identificando e bloqueando somente o par inexistente comprovado, preservando os demais pares válidos), 429, 5xx e payloads inválidos convertidos em `RemoteError` sem crash. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E03-T05** | Criar `QuoteRemoteMapper` e testes unitários/MockWebServer de parsing e erro da API | 18 testes cobrem mapeamento multi-par, preservação decimal exata, regex `^[A-Z]{3}-BRL$`, fallback XML, bloqueio de fallback em 429/500, erro 404 em lote, preservação de pares válidos/cache e resolução Koin. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E03-T01** | Configurar Retrofit + OkHttpClient + Moshi com timeouts e logging | Cliente HTTP configurado no `networkModule` (`AppModule`) apontando para `AwesomeApiConfig.BASE_URL` (`https://economia.awesomeapi.com.br/`). | APROVADA |
+| **E03-T02** | Implementar DTOs e endpoint `/json/last/{pairs}` (`AwesomeApiService`) | Chamada dinâmica para múltiplos pares (ex.: `USD-BRL,EUR-BRL`) desserializando o mapa de cotações (`QuoteDto`) preservando decimais em string. | APROVADA |
+| **E03-T03** | Implementar consulta e parser do catálogo oficial `/xml/available` com tentativa experimental `/json/available` | `/xml/available` é a fonte oficial documentada; `/json/available` atua apenas como tentativa experimental com fallback XML (sem fallback em 429/5xx/timeout/offline). Parser aceita estritamente `^[A-Z]{3}-BRL$` e persiste no `AvailablePairDao` sem apagar cache em falha. | APROVADA |
+| **E03-T04** | Implementar tratamento de erros HTTP e `CoinNotExists` (404) em lote | Erros de rede, timeout, HTTP 404 (`CoinNotExists` — identificando e bloqueando somente o par inexistente comprovado, preservando os demais pares válidos), 429, 5xx e payloads inválidos convertidos em `RemoteError` sem crash. | APROVADA |
+| **E03-T05** | Criar `QuoteRemoteMapper` e testes unitários/MockWebServer de parsing e erro da API | 18 testes cobrem mapeamento multi-par, preservação decimal exata, regex `^[A-Z]{3}-BRL$`, fallback XML, bloqueio de fallback em 429/500, erro 404 em lote, preservação de pares válidos/cache e resolução Koin. | APROVADA |
 
 ---
 
-## E04 — Camada de domínio e repositórios
+## E04 — Camada de domínio e repositórios *(Implementação e testes concluídos — aguardando revisão externa)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E04-T01** | Criar modelos e erros de domínio puros (`CurrencyQuote`, `AvailableCurrency`, `ConversionResult`, `SyncStatus`, `DomainError`) | Nenhum arquivo da camada `domain` importa Android, Room, Retrofit ou Compose. | PENDENTE |
-| **E04-T02** | Definir contratos `QuoteRepository`, `CatalogRepository` e `SyncScheduler` | Interfaces claras e desacopladas definidas no pacote `domain`. | PENDENTE |
-| **E04-T03** | Implementar `CurrencyConverter` com `BigDecimal` e taxa `bid` | Cálculos `X -> BRL`, `BRL -> Y`, `X -> Y` (via BRL) e tratamento de cotação ausente implementados com `BigDecimal`. | PENDENTE |
-| **E04-T04** | Implementar casos de uso de cotações, favoritos e regra de 15 minutos | `ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase` e `ToggleFavoriteUseCase` implementados com cálculo de `isStale` (> 15 min). | PENDENTE |
-| **E04-T05** | Implementar casos de uso do catálogo, pesquisa, validação de par, adição e remoção | `SearchAvailableCurrenciesUseCase` (nome e código), `AddCurrencyUseCase` (valida par suportado) e `RemoveCurrencyUseCase` (preserva as 10 padrão). | PENDENTE |
-| **E04-T06** | Implementar `QuoteRepositoryImpl` e `CatalogRepositoryImpl` (SSOT Room) | Fluxo Offline First implementado garantindo que falhas de API não apaguem dados locais e registrem timestamp de sucesso. | PENDENTE |
-| **E04-T07** | Criar testes unitários JUnit para toda a camada de domínio e repositórios | Testes unitários para conversor `BigDecimal`, regra de 15 min, preservação das 10 padrão, validação de pares, pesquisa e favoritos. | PENDENTE |
+| **E04-T01** | Criar modelos e erros de domínio puros (`CurrencyQuote`, `AvailableCurrency`, `ConversionResult`, `SyncStatus`, `DomainError`) | Todos os modelos em `domain/model` (`CurrencyModels.kt`, `AvailableCurrency.kt`, `ConversionResult.kt`, `DomainResult.kt`) sem imports de Android, Room, Retrofit, Moshi ou Compose. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T02** | Definir contratos `QuoteRepository`, `CatalogRepository` (e abstração de tempo `TimeProvider`) | Contratos `QuoteRepository` e `CatalogRepository` definidos no pacote `domain/repository`; `SyncScheduler` permanece reservado à Etapa E06 (WorkManager). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T03** | Implementar `CurrencyConverter` com `BigDecimal` e taxa `bid` | Cálculos `X -> BRL`, `BRL -> Y`, `X -> Y` (via BRL), mesma moeda, entrada com vírgula/ponto, escalas por moeda de destino (`HALF_UP`), `MathContext.DECIMAL128` e rejeição segura de cotação ausente/`bid <= 0` ou valor inválido. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T04** | Implementar `QuoteFreshnessEvaluator` (regra de 15 minutos) e casos de uso de cotações e favoritos | `ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase`, `ToggleFavoriteUseCase` e `ConvertCurrencyUseCase` implementados com avaliação de `QuoteFreshnessStatus` (`FRESH`, `STALE` > 15 min, `UNAVAILABLE`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T05** | Implementar casos de uso do catálogo, pesquisa, validação de par, adição e remoção | `ObserveAvailableCurrenciesUseCase`, `SearchAvailableCurrenciesUseCase` (código/nome sem acentos), `RefreshCatalogUseCase`, `AddCurrencyUseCase` (valida `*-BRL` + melhor esforço de cotação) e `RemoveCurrencyUseCase` (protege as 10 padrão). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T06** | Implementar `QuoteRepositoryImpl` e `CatalogRepositoryImpl` (SSOT Room) + `DataModule`/`DomainModule` | Fluxo Offline First via `Flow` do Room, deduplicação de sync concorrente (`Mutex` + `CompletableDeferred`), preservação de cache em falha e registro completo no Koin (`appModules`) sem ciclos. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T07** | Criar testes unitários JUnit e de integração para domínio, repositórios e Koin | 21 testes da E04 (16 unitários puros + 4 integração Room/MockWebServer/Robolectric + 1 integração Koin) executados e aprovados em `gradle :app:testDebugUnitTest`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
 
 ---
 
