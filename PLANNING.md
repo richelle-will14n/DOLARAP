@@ -1,6 +1,6 @@
 # PLANNING — DOLARAP
 
-> **Status do documento:** Planejamento técnico atualizado após as etapas E01 e E02 (E00 e E01 aprovadas; E02 implementada e testada, aguardando revisão externa; E03–E07 planejadas).
+> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E03 (E00, E01 e E02 aprovadas; E03 implementada e testada, aguardando revisão externa; E04–E07 planejadas).
 
 ## 1. Arquitetura Proposta
 
@@ -39,7 +39,7 @@ presentation (Compose + ViewModels + StateFlow)
 | **java.math.BigDecimal** | Cálculos monetários | Evita erros de precisão binária inerentes a `Double`/`Float` em conversões financeiras. |
 | **JUnit (e Coroutines Test / Robolectric se aplicável)** | Testes unitários | Verificação rápida e determinística de casos de uso, regras de negócio, mappers e repositório na JVM. |
 
-> **Nota sobre o estado das dependências (após E01/E02):** O projeto já possui configurados no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 + OkHttp 4.10.0`, `WorkManager 2.10.1`, `Coroutines 1.10.2`, `JUnit 4.13.2` e `Robolectric 4.16.1`. Até a E02, estão implementados apenas a fundação Compose/Koin e a camada local Room.
+> **Nota sobre o estado das dependências (após E03):** O projeto já possui configurados no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 (com codegen KSP) + OkHttp 4.10.0 (+ MockWebServer 4.10.0 em testes)`, `WorkManager 2.10.1`, `Coroutines 1.10.2`, `JUnit 4.13.2` e `Robolectric 4.16.1`. Até a E03, estão implementados a fundação Compose/Koin, a camada local Room e a camada remota da AwesomeAPI (`data/remote` + `NetworkModule`).
 
 ---
 
@@ -52,10 +52,11 @@ com.aistudio.dolarap
 ├── DolarapApplication.kt               # Inicialização do Koin (e WorkManager periódico na E06)
 ├── MainActivity.kt                     # Entry point Compose (provisório na E01; Navigation na E05)
 ├── di/
-│   ├── AppModule.kt                    # Lista de módulos Koin ativos (databaseModule na E02)
+│   ├── AppModule.kt                    # Lista de módulos Koin ativos (databaseModule, networkModule)
 │   ├── DatabaseModule.kt               # (E02) Provisão singleton de DolarapDatabase e DAOs
+│   ├── NetworkModule.kt                # (E03) Moshi, OkHttpClient, Retrofit, AwesomeApiService e RemoteDataSource
 │   ├── DomainModule.kt                 # (Planejado E04) Casos de uso e calculadora monetária
-│   ├── DataModule.kt                   # (Planejado E03/E04/E06) Retrofit, Repositories, WorkManager Scheduler
+│   ├── DataModule.kt                   # (Planejado E04/E06) Repositories e WorkManager Scheduler
 │   └── PresentationModule.kt           # (Planejado E05) ViewModels
 ├── domain/
 │   ├── model/
@@ -95,18 +96,22 @@ com.aistudio.dolarap
 │   │   └── catalog/
 │   │       └── ComplementaryCurrencyCatalog.kt # Nomes amigáveis PT-BR e símbolos complementares (sem burlar suporte da API)
 │   ├── remote/
-│   │   ├── AwesomeApiService.kt        # Endpoints /json/last/{pairs} e catálogo available
+│   │   ├── AwesomeApiConfig.kt         # (E03) URL base, endpoints, timeouts e constantes
+│   │   ├── AwesomeApiService.kt        # (E03) Endpoints /json/last/{pairs}, /json/available e /xml/available
+│   │   ├── AwesomeApiRemoteDataSource.kt # (E03) Orquestração HTTP, fallback XML e bloqueio de 404
 │   │   ├── dto/
-│   │   │   ├── QuoteDto.kt             # DTO exato da resposta da AwesomeAPI
-│   │   │   └── ApiErrorDto.kt          # DTO de erro {"status", "code", "message"}
+│   │   │   ├── QuoteDto.kt             # (E03) DTO defensivo da resposta da AwesomeAPI
+│   │   │   └── ApiErrorDto.kt          # (E03) DTO de erro {"status", "code", "message"}
+│   │   ├── mapper/
+│   │   │   └── QuoteRemoteMapper.kt    # (E03) Mapeia QuoteDto -> QuoteEntity preservando decimais exatos
+│   │   ├── model/
+│   │   │   └── RemoteResult.kt         # (E03) RemoteResult<T> e RemoteError tipados na camada data
 │   │   └── parser/
-│   │       └── AvailableCatalogParser.kt # Parsing seguro de /json/available ou fallback XML /xml/available
-│   ├── repository/
+│   │       └── AvailableCatalogParser.kt # (E03) Parsing defensivo JSON e fallback XML (/xml/available)
+│   ├── repository/                     # (Planejado E04)
 │   │   ├── QuoteRepositoryImpl.kt
 │   │   └── CatalogRepositoryImpl.kt
-│   ├── mapper/
-│   │   └── QuoteMapper.kt
-│   └── worker/
+│   └── worker/                         # (Planejado E06)
 │       ├── SyncQuotesWorker.kt         # CoroutineWorker para sincronização em background
 │       └── WorkManagerSyncScheduler.kt # Agendamento único (periódico 6h + retry CONNECTED)
 └── presentation/
@@ -199,9 +204,9 @@ Ao investigar a documentação oficial da AwesomeAPI (`https://docs.awesomeapi.c
    - `https://economia.awesomeapi.com.br/xml/available` — lista completa de combinações/pares de moedas suportados.
    - `https://economia.awesomeapi.com.br/xml/available/uniq` — lista com códigos únicos e nomes das moedas.
    O caminho `/json/available` solicitado no escopo aparece em referências comunitárias, porém **não consta formalmente especificado com schema garantido na documentação oficial consultada** (ou pode variar entre mapa JSON plano `{"USD-BRL": "Dólar Americano/Real Brasileiro"}`, resposta XML ou indisponibilidade).
-2. **Estratégia segura de consumo do catálogo:**
-   - Na Etapa E03, o endpoint `https://economia.awesomeapi.com.br/json/available` será verificado empiricamente contra a API real e tratado com parser defensivo (`Map<String, String>`).
-   - Caso `/json/available` não retorne JSON válido ou não esteja disponível, o cliente utilizará o endpoint oficialmente documentado `https://economia.awesomeapi.com.br/xml/available` (e opcionalmente `/xml/available/uniq`) como fallback oficial documentado.
+2. **Estratégia segura de consumo do catálogo (implementada na E03):**
+   - `AwesomeApiRemoteDataSource.syncAvailableBrlCatalog()` tenta primeiramente `GET /json/available` usando parser defensivo (`Map<String, String?>` via Moshi).
+   - Caso `/json/available` retorne erro HTTP, formato não-JSON (como XML), JSON inválido ou vazio (mantendo falha direta apenas em `NoConnection`/`Timeout`), o cliente executa automaticamente o fallback para o endpoint oficialmente documentado `GET /xml/available` via `AvailableCatalogParser.parseXmlToBrlPairs` (suportando tanto `<xml><USD-BRL>...</USD-BRL></xml>` quanto elementos `<item>`), filtrando estritamente pares `*-BRL`.
 3. **Limitação de nomes amigáveis e identificação de pares:**
    - O catálogo `/available` traz pares combinados (nem todas as moedas do mundo possuem par direto com `BRL`, e algumas descrições vêm no formato `"Moeda Origem/Real Brasileiro"` ou apenas códigos abreviados).
    - Além disso, o catálogo não traz símbolos monetários (`$`, `€`, `£`) nem termos alternativos de busca sem acentuação.
@@ -346,8 +351,8 @@ No `RoomDatabase.Callback.onCreate` (e verificação idempotente na inicializaç
   - `RemoveCurrencyUseCaseTest`: bloqueio de remoção das 10 moedas padrão e permissão para moedas adicionadas pelo usuário.
   - `AddCurrencyUseCaseTest`: bloqueio de adição de par não suportado no catálogo e sucesso para par suportado.
   - `SearchAvailableCurrenciesUseCaseTest`: busca por código e nome (case-insensitive e sem acentos).
-  - `QuoteMapperTest` e `AvailableCatalogParserTest`: parsing de strings decimais da AwesomeAPI, resposta válida, JSON inválido/campos ausentes.
-  - `QuoteRepositoryImplTest` (com fakes/in-memory): comportamento Offline First, preservação de dados locais em erro HTTP/rede, persistência de favoritos e timestamp de sync.
+  - `QuoteRemoteMapperTest` e `AvailableCatalogParserTest` (implementados na E03) + `AwesomeApiRemoteDataSourceTest` (com `MockWebServer`): parsing de strings decimais da AwesomeAPI, resposta válida, JSON/XML inválido ou campos ausentes, fallback automático `/json/available` -> `/xml/available` e tratamento de erro HTTP 404 `CoinNotExists` / timeout / offline.
+  - `QuoteRepositoryImplTest` (planejado E04, com fakes/in-memory): comportamento Offline First, preservação de dados locais em erro HTTP/rede, persistência de favoritos e timestamp de sync.
 - **Validações Manuais Planejadas:**
   - Documentadas em `TEST_RESULTS.md` cobrindo fluxo completo no app (primeira carga, pesquisa/adição/remoção, favoritos após kill/reopen, conversor, modo avião, alerta > 15 min, retorno de conexão e execução do Worker).
 
@@ -356,7 +361,7 @@ No `RoomDatabase.Callback.onCreate` (e verificação idempotente na inicializaç
 ## 11. Decisões Técnicas e Limitações Conhecidas
 
 1. **Conversão entre duas moedas estrangeiras:** Como a consulta principal foca pares em relação ao `BRL`, a conversão `X -> Y` (ambas != `BRL`) será calculada por triangulação via `BRL` utilizando os respectivos `bid` (`bid(X-BRL) / bid(Y-BRL)`). Isso garante consistência com a lista exibida sem exigir N² consultas na API, mas deve ser documentado como taxa derivada de `bid` em relação ao BRL.
-2. **Incerteza do endpoint `/json/available`:** Como a documentação oficial da AwesomeAPI prioriza `/xml/available`, o parser da camada `data` deverá validar na Etapa E03 o retorno real de `/json/available` e manter `/xml/available` como fallback oficial compatível.
+2. **Incerteza do endpoint `/json/available`:** Como a documentação oficial da AwesomeAPI prioriza `/xml/available`, a camada `data/remote` (E03) consome `/json/available` com parser defensivo e mantém fallback automático para `/xml/available` sem comprometer o cache salvo no Room.
 3. **Cache de 1 minuto da AwesomeAPI:** Atualizações manuais em intervalos menores que 1 minuto podem retornar a mesma cotação em cache do provedor gratuito.
 4. **WorkManager não exato:** O intervalo de 6 horas representa periodicidade mínima/aproximada gerenciada pelo sistema Android.
 5. **Dependência Koin vs template inicial:** O template inicial ainda não possui Koin, WorkManager ou Navigation Compose descomentados; essa adequação ocorrerá somente na Etapa E01.

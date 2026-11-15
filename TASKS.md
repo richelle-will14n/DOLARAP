@@ -35,27 +35,27 @@ Legenda de status:
 
 ---
 
-## E02 — Banco de dados local (Room) *(Implementação e testes concluídos — aguardando revisão externa)*
+## E02 — Banco de dados local (Room) *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E02-T01** | Criar entidades Room (`SelectedCurrencyEntity`, `QuoteEntity`, `AvailablePairEntity`, `SyncMetadataEntity`) | Entidades mapeadas com chaves primárias, tipos corretos e armazenamento de decimais em string. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E02-T02** | Implementar DAOs (`CurrencyDao`, `QuoteDao`, `AvailablePairDao`, `SyncMetadataDao`) | Consultas reativas via `Flow` para moedas selecionadas, cotações, catálogo disponível, favoritos e metadados de sync. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E02-T03** | Implementar `DolarapDatabase` com seed das 10 moedas padrão | Seed inicial insere `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY` e `MXN` com `isDefault = true` de forma idempotente. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E02-T04** | Criar catálogo complementar local (`ComplementaryCurrencyCatalog`) | Nomes amigáveis em PT-BR e termos de busca estruturados sem habilitar moedas não suportadas pela API. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E02-T05** | Escrever testes locais para DAOs e seed das 10 moedas padrão | Testes verificam inserção inicial das 10 moedas, persistência de favoritos e atualização sem perda de estado. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E02-T01** | Criar entidades Room (`SelectedCurrencyEntity`, `QuoteEntity`, `AvailablePairEntity`, `SyncMetadataEntity`) | Entidades mapeadas com chaves primárias, tipos corretos e armazenamento de decimais em string. | APROVADA |
+| **E02-T02** | Implementar DAOs (`CurrencyDao`, `QuoteDao`, `AvailablePairDao`, `SyncMetadataDao`) | Consultas reativas via `Flow` para moedas selecionadas, cotações, catálogo disponível, favoritos e metadados de sync. | APROVADA |
+| **E02-T03** | Implementar `DolarapDatabase` com seed das 10 moedas padrão | Seed inicial insere `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY` e `MXN` com `isDefault = true` de forma idempotente. | APROVADA |
+| **E02-T04** | Criar catálogo complementar local (`ComplementaryCurrencyCatalog`) | Nomes amigáveis em PT-BR e termos de busca estruturados sem habilitar moedas não suportadas pela API. | APROVADA |
+| **E02-T05** | Escrever testes locais para DAOs e seed das 10 moedas padrão | Testes verificam inserção inicial das 10 moedas, persistência de favoritos e atualização sem perda de estado. | APROVADA |
 
 ---
 
-## E03 — Integração com a API (AwesomeAPI)
+## E03 — Integração com a API (AwesomeAPI) *(Implementação e testes concluídos — aguardando revisão externa)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E03-T01** | Configurar Retrofit + OkHttpClient com timeouts e logging | Cliente HTTP funcional configurado no `DataModule` apontando para `https://economia.awesomeapi.com.br/`. | PENDENTE |
-| **E03-T02** | Implementar DTOs e endpoint `/json/last/{pairs}` (`AwesomeApiService`) | Chamada dinâmica para múltiplos pares (ex.: `USD-BRL,EUR-BRL`) desserializando o mapa de cotações corretamente. | PENDENTE |
-| **E03-T03** | Implementar consulta e parser do catálogo de moedas disponíveis (`/json/available` com fallback `/xml/available`) | Endpoint validado em execução real, pares `*-BRL` extraídos com segurança e salvos em `AvailablePairEntity`. | PENDENTE |
-| **E03-T04** | Implementar tratamento de erros HTTP e `CoinNotExists` (404) | Erros de rede, HTTP 404, 429, 5xx e payloads inválidos são capturados e convertidos em erros de domínio sem crash. | PENDENTE |
-| **E03-T05** | Criar `QuoteMapper` e testes unitários de parsing/erro da API | Testes unitários cobrem resposta válida de múltiplos pares, resposta parcial/malformada e erro 404 `CoinNotExists`. | PENDENTE |
+| **E03-T01** | Configurar Retrofit + OkHttpClient + Moshi com timeouts e logging | Cliente HTTP configurado no `networkModule` (`AppModule`) apontando para `AwesomeApiConfig.BASE_URL` (`https://economia.awesomeapi.com.br/`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E03-T02** | Implementar DTOs e endpoint `/json/last/{pairs}` (`AwesomeApiService`) | Chamada dinâmica para múltiplos pares (ex.: `USD-BRL,EUR-BRL`) desserializando o mapa de cotações (`QuoteDto`) preservando decimais em string. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E03-T03** | Implementar consulta e parser do catálogo de moedas disponíveis (`/json/available` com fallback `/xml/available`) | `AvailableCatalogParser` e `AwesomeApiRemoteDataSource` suportam JSON e fallback oficial XML, filtrando estritamente pares `*-BRL` e persistindo no `AvailablePairDao`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E03-T04** | Implementar tratamento de erros HTTP e `CoinNotExists` (404) | Erros de rede, timeout, HTTP 404 (`CoinNotExists` com bloqueio de novas tentativas repetidas), 429, 5xx e payloads inválidos convertidos em `RemoteError` sem crash. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E03-T05** | Criar `QuoteRemoteMapper` e testes unitários/MockWebServer de parsing e erro da API | 15 testes cobrem mapeamento de múltiplos pares, preservação decimal exata, parsers JSON/XML, fallback de catálogo, erro 404 `CoinNotExists`, 429/500/timeout/offline e resolução Koin. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
 
 ---
 

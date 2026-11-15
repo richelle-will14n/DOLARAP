@@ -4,6 +4,7 @@ import org.koin.core.module.Module
 
 /**
  * Lista de módulos Koin registrados na inicialização da aplicação.
- * Etapa E02: inclui o módulo de persistência local Room (Database e DAOs).
+ * Etapa E02: databaseModule (Room).
+ * Etapa E03: networkModule (Retrofit, OkHttp, Moshi e AwesomeAPI).
  */
-val appModules: List<Module> = listOf(databaseModule)
+val appModules: List<Module> = listOf(databaseModule, networkModule)

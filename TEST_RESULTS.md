@@ -1,6 +1,6 @@
 # TEST_RESULTS — DOLARAP
 
-> **Status geral:** Etapa E02 (implementação e testes) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (14 testes no total: 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E02**. Os registros planejados da Etapa E00 (`UT-01`–`UT-14` e `MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
+> **Status geral:** Etapa E03 (integração com a AwesomeAPI e testes) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (29 testes no total: 15 da E03 + 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E03**. Os registros planejados da Etapa E00 (`UT-01`–`UT-11`, `UT-14` e `MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
 
 ## Legenda de Status
 - `NÃO EXECUTADO` — Caso de teste planejado, aguardando implementação da funcionalidade correspondente.
@@ -14,8 +14,8 @@
 
 | Etapa | Data | Executor | Ambiente / Build | Observações | Status |
 |---|---|---|---|---|---|
-| E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric); etapa aguardando revisão externa | APROVADO |
-| E03 — Integração AwesomeAPI | - | - | - | Aguardando implementação | NÃO EXECUTADO |
+| E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric); etapa aprovada | APROVADO |
+| E03 — Integração AwesomeAPI | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 15/15 testes da E03 aprovados (7 unitários puros + 8 integração MockWebServer/Room/Koin via Robolectric); etapa aguardando revisão externa | APROVADO |
 | E04 — Camada de Domínio | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 | E05/E06 — Interface e Offline First | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 | E07 — Validação Final de Entrega | - | - | - | Aguardando implementação | NÃO EXECUTADO |
@@ -37,9 +37,9 @@
 | **UT-09** | Validação de par suportado antes de adicionar moeda | `domain` / `AddCurrencyUseCase` | Permite apenas moedas com par `*-BRL` presente no catálogo validado | - | - | - | NÃO EXECUTADO |
 | **UT-10** | Pesquisa de moedas por código e nome amigável | `domain` / `SearchAvailableCurrenciesUseCase` | Filtra corretamente por código (ex.: `CHF`) e nome (ex.: `Franco`), ignorando maiúsculas/acentos | - | - | - | NÃO EXECUTADO |
 | **UT-11** | Alternância e persistência de favorito | `domain` / `ToggleFavoriteUseCase` | Atualiza estado `isFavorite` no repositório sem alterar `isDefault` | - | - | - | NÃO EXECUTADO |
-| **UT-12** | Mapeamento de DTO da AwesomeAPI (`/json/last`) | `data` / `QuoteMapper` | Converte strings `bid`, `ask`, `varBid`, `pctChange` e `timestamp` sem perda decimal | - | - | - | NÃO EXECUTADO |
-| **UT-13** | Parser do catálogo disponível (`/available`) | `data` / `AvailableCatalogParser` | Extrai corretamente pares `*-BRL` suportados e ignora entradas inválidas | - | - | - | NÃO EXECUTADO |
-| **UT-14** | Tratamento de erro HTTP 404 (`CoinNotExists`) e falha de rede | `data` / `QuoteRepositoryImpl` | Não apaga cotações existentes no Room e retorna erro de domínio apropriado | - | - | - | NÃO EXECUTADO |
+| **UT-12** | Mapeamento de DTO da AwesomeAPI (`/json/last`) | `data.remote` / `QuoteRemoteMapper` | Preserva strings `bid`, `ask`, `varBid`, `pctChange`, `high`, `low` e `timestamp` sem perda decimal | Mapeia múltiplos pares mantendo decimais exatos e rejeitando DTOs inválidos | 2026-11-15 | Validado via `QuoteRemoteMapperTest` e `AwesomeApiRemoteDataSourceTest` | APROVADO |
+| **UT-13** | Parser do catálogo disponível (`/available`) | `data.remote` / `AvailableCatalogParser` | Extrai corretamente pares `*-BRL` suportados e ignora entradas inválidas | Extrai apenas `*-BRL` em JSON e XML (fallback oficial) ignorando pares inválidos/não-BRL | 2026-11-15 | Validado via `AvailableCatalogParserTest` e `AwesomeApiRemoteDataSourceTest` | APROVADO |
+| **UT-14** | Tratamento de erro HTTP 404 (`CoinNotExists`) e falha de rede | `data` / `QuoteRepositoryImpl` | Não apaga cotações existentes no Room e retorna erro de domínio apropriado | - | - | Tratamento remoto validado na E03 (`AwesomeApiRemoteDataSource`); camada `QuoteRepositoryImpl` pendente da E04 | NÃO EXECUTADO |
 | **UT-15** | Seed inicial das 10 moedas padrão no banco | `data` / `DolarapDatabase` / DAO | Banco recém-criado contém exatamente as 10 moedas padrão com `isDefault = true` | 10 moedas padrão semeados na criação (`onCreate`) | 2026-11-15 | Validado via `DolarapDatabaseIntegrationTest` (Robolectric + Room em memória) | APROVADO |
 
 ---
@@ -81,4 +81,30 @@ Execução realizada em **2026-11-15** via `gradle :app:assembleDebug :app:testD
 | **E02-IT-07** | Inserção, atualização, observação via `Flow` e limpeza em `SyncMetadataDao` | Integração Room (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/local/DolarapDatabaseIntegrationTest.kt` | APROVADO | Sem falhas |
 | **E02-IT-08** | Resolução singleton de `DolarapDatabase` e dos 4 DAOs via Koin (`DolarapApplication`) | Integração DI + Room (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/local/KoinDatabaseModuleTest.kt` | APROVADO | Primeira execução revelou `KoinApplicationAlreadyStartedException` em múltiplos runners Robolectric; corrigido com guarda `GlobalContext.getOrNull() == null` em `DolarapApplication` e reexecutado com sucesso |
 | **E02-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) | Instrumentado (`androidTest`) | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de execução sem emulador Android ou ADB disponível |
+
+---
+
+## 5. Execução da Etapa E03 — Integração com a AwesomeAPI
+
+Execução realizada em **2026-11-15** via `gradle :app:assembleDebug :app:testDebugUnitTest` (JUnit 4 + Moshi + OkHttp `MockWebServer` + Coroutines + Room em memória + Robolectric SDK 36). Todos os 15 novos testes da E03 passaram na primeira execução, somando 29 testes aprovados no projeto (15 E03 + 12 E02 + 2 E01).
+
+| ID | Descrição | Tipo de Teste | Arquivo de Teste | Resultado | Observações |
+|---|---|---|---|---|---|
+| **E03-UT-01** | Desserializa JSON de múltiplos pares (`/json/last`) preservando strings decimais exatas em `QuoteEntity` | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/QuoteRemoteMapperTest.kt` | APROVADO | Sem falhas |
+| **E03-UT-02** | Rejeita com segurança `QuoteDto` incompleto, com `bid` ausente/não numérico ou `code` vazio | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/QuoteRemoteMapperTest.kt` | APROVADO | Sem falhas |
+| **E03-UT-03** | Desserializa erro estruturado `ApiErrorDto` (`404 CoinNotExists`) via Moshi | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/QuoteRemoteMapperTest.kt` | APROVADO | Sem falhas |
+| **E03-UT-04** | `parseJsonToBrlPairs` filtra estritamente pares `*-BRL` (excluindo `EUR-USD`, `USD-BRLT`, `USD-BRLPTAX`) e enriquece `friendlyName` | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/AvailableCatalogParserTest.kt` | APROVADO | Sem falhas |
+| **E03-UT-05** | `parseJsonToBrlPairs` rejeita payload XML, string em branco ou JSON malformado retornando `RemoteError` tipado | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/AvailableCatalogParserTest.kt` | APROVADO | Sem falhas |
+| **E03-UT-06** | `parseXmlToBrlPairs` processa formato oficial tag-por-par (`<xml><USD-BRL>...</USD-BRL></xml>`) filtrando apenas `*-BRL` | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/AvailableCatalogParserTest.kt` | APROVADO | Implementado com `DocumentBuilderFactory` para portabilidade JVM/Android |
+| **E03-UT-07** | `parseXmlToBrlPairs` também suporta elementos `<item>` (`code`/`codein`) e rejeita XML malformado | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/data/remote/AvailableCatalogParserTest.kt` | APROVADO | Sem falhas |
+| **E03-IT-01** | `fetchLastQuotes` consulta `/json/last/USD-BRL,EUR-BRL` no `MockWebServer` e retorna entidades mapeadas com decimais exatos | Integração HTTP + Parser (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Sem falhas |
+| **E03-IT-02** | `fetchLastQuotes` trata HTTP 404 `CoinNotExists`, marca par como indisponível no Room (`AvailablePairDao`) e bloqueia novas requisições repetidas | Integração HTTP + Room (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Verifica `requestCount == 1` na segunda tentativa |
+| **E03-IT-03** | `fetchLastQuotes` trata HTTP 429, HTTP 500, JSON vazio `{}` e JSON malformado mapeando para `RemoteError` sem exceções | Integração HTTP (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Sem falhas |
+| **E03-IT-04** | `fetchLastQuotes` mapeia timeout de socket (`SocketPolicy.NO_RESPONSE`) para `RemoteError.Timeout` e falha de conexão para `RemoteError.NoConnection` | Integração HTTP (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Sem falhas |
+| **E03-IT-05** | `syncAvailableBrlCatalog` consome `/json/available`, filtra `*-BRL` e persiste catálogo no `AvailablePairDao` | Integração HTTP + Room (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Sem falhas |
+| **E03-IT-06** | `syncAvailableBrlCatalog` aciona fallback automático para `/xml/available` quando `/json/available` falha (404) e persiste os pares XML no Room | Integração HTTP + Room (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Valida sequência `/json/available` -> `/xml/available` |
+| **E03-IT-07** | `syncAvailableBrlCatalog` preserva catálogo cacheado existente no Room quando JSON e XML retornam HTTP 500 | Integração HTTP + Room (Robolectric + MockWebServer) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Cache local permanece intacto |
+| **E03-IT-08** | Koin resolve `Moshi`, `OkHttpClient`, `Retrofit` (`AwesomeApiConfig.BASE_URL`), `AwesomeApiService`, `QuoteRemoteMapper`, `AvailableCatalogParser` e singleton `AwesomeApiRemoteDataSource` | Integração DI + Rede (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/remote/KoinNetworkModuleTest.kt` | APROVADO | Sem falhas |
+| **E03-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) | Instrumentado (`androidTest`) | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de execução sem emulador Android ou ADB disponível |
+
 
