@@ -1,6 +1,6 @@
 # PLANNING — DOLARAP
 
-> **Status do documento:** Planejamento técnico inicial (Etapa 0). Nenhum código Kotlin ou arquivo de configuração Android foi alterado nesta etapa.
+> **Status do documento:** Planejamento técnico atualizado após as etapas E01 e E02 (E00 e E01 aprovadas; E02 implementada e testada, aguardando revisão externa; E03–E07 planejadas).
 
 ## 1. Arquitetura Proposta
 
@@ -39,22 +39,24 @@ presentation (Compose + ViewModels + StateFlow)
 | **java.math.BigDecimal** | Cálculos monetários | Evita erros de precisão binária inerentes a `Double`/`Float` em conversões financeiras. |
 | **JUnit (e Coroutines Test / Robolectric se aplicável)** | Testes unitários | Verificação rápida e determinística de casos de uso, regras de negócio, mappers e repositório na JVM. |
 
-> **Nota sobre o estado atual do template:** O projeto base no repositório contém configurações iniciais com Moshi e Room já declarados no Gradle, enquanto **Koin**, **WorkManager** e **Navigation Compose** deverão ser adicionados/habilitados exclusivamente na **Etapa E01 (Preparação do projeto)**, sem alterações nesta Etapa 0.
+> **Nota sobre o estado das dependências (após E01/E02):** O projeto já possui configurados no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 + OkHttp 4.10.0`, `WorkManager 2.10.1`, `Coroutines 1.10.2`, `JUnit 4.13.2` e `Robolectric 4.16.1`. Até a E02, estão implementados apenas a fundação Compose/Koin e a camada local Room.
 
 ---
 
 ## 3. Estrutura de Pacotes (`:app`)
 
-Dentro de `app/src/main/java/com/example/` (preservando o `namespace` do projeto):
+Dentro de `app/src/main/java/com/aistudio/dolarap/` (`namespace` e `applicationId` = `com.aistudio.dolarap`):
 
 ```text
-com.example
-├── DolarapApplication.kt               # Inicialização do Koin e WorkManager periódico
-├── MainActivity.kt                     # Entry point Compose + Navigation host
+com.aistudio.dolarap
+├── DolarapApplication.kt               # Inicialização do Koin (e WorkManager periódico na E06)
+├── MainActivity.kt                     # Entry point Compose (provisório na E01; Navigation na E05)
 ├── di/
-│   ├── DomainModule.kt                 # Casos de uso e calculadora monetária
-│   ├── DataModule.kt                   # Room, DAOs, Retrofit, Repositories, WorkManager Scheduler
-│   └── PresentationModule.kt           # ViewModels
+│   ├── AppModule.kt                    # Lista de módulos Koin ativos (databaseModule na E02)
+│   ├── DatabaseModule.kt               # (E02) Provisão singleton de DolarapDatabase e DAOs
+│   ├── DomainModule.kt                 # (Planejado E04) Casos de uso e calculadora monetária
+│   ├── DataModule.kt                   # (Planejado E03/E04/E06) Retrofit, Repositories, WorkManager Scheduler
+│   └── PresentationModule.kt           # (Planejado E05) ViewModels
 ├── domain/
 │   ├── model/
 │   │   ├── CurrencyQuote.kt            # Modelo de domínio de cotação (BigDecimal, timestamps, isFavorite, isDefault)
@@ -88,7 +90,8 @@ com.example
 │   │   │   ├── SelectedCurrencyEntity.kt
 │   │   │   ├── QuoteEntity.kt
 │   │   │   ├── AvailablePairEntity.kt
-│   │   │   └── SyncMetadataEntity.kt
+│   │   │   ├── SyncMetadataEntity.kt
+│   │   │   └── SelectedCurrencyWithQuote.kt
 │   │   └── catalog/
 │   │       └── ComplementaryCurrencyCatalog.kt # Nomes amigáveis PT-BR e símbolos complementares (sem burlar suporte da API)
 │   ├── remote/
@@ -275,6 +278,7 @@ Ao investigar a documentação oficial da AwesomeAPI (`https://docs.awesomeapi.c
    - `quoteCode: String` (ex.: `"BRL"`)
    - `apiDescription: String`
    - `friendlyName: String`
+   - `isAvailable: Boolean` (indica se o par segue suportado; padrão `true`)
    - `updatedAtMillis: Long`
 
 4. **`SyncMetadataEntity`** (`sync_metadata`)
@@ -283,6 +287,9 @@ Ao investigar a documentação oficial da AwesomeAPI (`https://docs.awesomeapi.c
    - `lastAttemptAtMillis: Long?`
    - `lastErrorType: String?`
    - `lastCatalogSyncAtMillis: Long?`
+
+5. **Relação `SelectedCurrencyWithQuote` (`@Embedded` + `@Relation`)**
+   - Associa `SelectedCurrencyEntity` à sua `QuoteEntity?` opcional pelo campo `pairCode`, garantindo exibição imediata offline mesmo antes da primeira cotação.
 
 ### Seed Inicial das 10 Moedas Padrão
 No `RoomDatabase.Callback.onCreate` (e verificação idempotente na inicialização do repositório), inserem-se as 10 moedas padrão com `isDefault = true`:

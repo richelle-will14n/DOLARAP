@@ -1,48 +1,49 @@
 # TASKS — DOLARAP
 
-> **Regra de status:** Todas as tarefas abaixo iniciam obrigatoriamente com status **PENDENTE**, conforme diretriz da Etapa 0. Nenhuma tarefa deve ser marcada como concluída antes de sua implementação e verificação real.
+> **Regra de status:** Nenhuma tarefa deve ser marcada como aprovada sem revisão externa. Diferenciamos conclusão técnica da implementação (`IMPLEMENTADA (AGUARDANDO REVISÃO)`) da aprovação formal da etapa (`APROVADA`).
 
 Legenda de status:
 - `PENDENTE`: ainda não iniciada ou aguardando implementação/validação.
 - `EM ANDAMENTO`: em execução na etapa corrente.
-- `CONCLUÍDA`: implementada e verificada conforme critério de conclusão.
+- `IMPLEMENTADA (AGUARDANDO REVISÃO)`: código e testes concluídos e validados, aguardando revisão externa para aprovação da etapa.
+- `APROVADA`: etapa e tarefas revisadas e aprovadas externamente.
 
 ---
 
-## E00 — Especificação e planejamento
+## E00 — Especificação e planejamento *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E00-T01** | Investigar documentação oficial da AwesomeAPI (`/json/last` e `/available`) | Endpoints, formato real das respostas, erros (404 `CoinNotExists`) e limitações registrados em `PLANNING.md`. | PENDENTE |
-| **E00-T02** | Elaborar especificação completa (`SPECIFICATION.md`) | Todos os RF, RNF, regras de negócio, fora de escopo, critérios de aceitação e rastreabilidade documentados. | PENDENTE |
-| **E00-T03** | Elaborar planejamento técnico (`PLANNING.md`) | Arquitetura Clean + MVVM, pacotes, fluxo Offline First, Room, WorkManager e estratégia de testes documentados. | PENDENTE |
-| **E00-T04** | Estruturar backlog incremental (`TASKS.md`) | Todas as 8 etapas (E00–E07) quebradas em tarefas pequenas, ordenadas e com critérios de conclusão. | PENDENTE |
-| **E00-T05** | Criar documentação inicial (`README.md` e `TEST_RESULTS.md`) | `README.md` alinhado ao escopo planejado e `TEST_RESULTS.md` com plano inicial de testes marcado como `NÃO EXECUTADO`. | PENDENTE |
-| **E00-T06** | Revisão e aprovação do planejamento pelo usuário | Usuário valida a documentação da Etapa 0 antes de iniciar qualquer código na Etapa E01. | PENDENTE |
+| **E00-T01** | Investigar documentação oficial da AwesomeAPI (`/json/last` e `/available`) | Endpoints, formato real das respostas, erros (404 `CoinNotExists`) e limitações registrados em `PLANNING.md`. | APROVADA |
+| **E00-T02** | Elaborar especificação completa (`SPECIFICATION.md`) | Todos os RF, RNF, regras de negócio, fora de escopo, critérios de aceitação e rastreabilidade documentados. | APROVADA |
+| **E00-T03** | Elaborar planejamento técnico (`PLANNING.md`) | Arquitetura Clean + MVVM, pacotes, fluxo Offline First, Room, WorkManager e estratégia de testes documentados. | APROVADA |
+| **E00-T04** | Estruturar backlog incremental (`TASKS.md`) | Todas as 8 etapas (E00–E07) quebradas em tarefas pequenas, ordenadas e com critérios de conclusão. | APROVADA |
+| **E00-T05** | Criar documentação inicial (`README.md` e `TEST_RESULTS.md`) | `README.md` alinhado ao escopo planejado e `TEST_RESULTS.md` com plano inicial de testes marcado como `NÃO EXECUTADO`. | APROVADA |
+| **E00-T06** | Revisão e aprovação do planejamento pelo usuário | Usuário valida a documentação da Etapa 0 antes de iniciar qualquer código na Etapa E01. | APROVADA |
 
 ---
 
-## E01 — Preparação do projeto
+## E01 — Preparação do projeto *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E01-T01** | Definir `applicationId` único e atualizar nome do app (`strings.xml`, `settings.gradle.kts`, `metadata.json`) | Projeto identifica-se como `DOLARAP` com `applicationId` único e `namespace` preservado. | PENDENTE |
-| **E01-T02** | Configurar dependências no `libs.versions.toml` e `app/build.gradle.kts` | Koin, Navigation Compose, WorkManager, Room, Retrofit, OkHttp, Coroutines e JUnit configurados e compilando sem erros. | PENDENTE |
-| **E01-T03** | Declarar permissões no `AndroidManifest.xml` | `INTERNET` e `ACCESS_NETWORK_STATE` declaradas corretamente no manifesto. | PENDENTE |
-| **E01-T04** | Criar estrutura de pacotes (`presentation`, `domain`, `data`, `di`) e classe `DolarapApplication` | Pacotes criados no módulo `:app`, `Application` registrada no manifesto com Koin inicializado e build verde. | PENDENTE |
-| **E01-T05** | Configurar tema Material 3 base e ícone adaptativo do DOLARAP | Tema base do DOLARAP configurado em `presentation/theme` e build executando sem erros. | PENDENTE |
+| **E01-T01** | Definir `applicationId` único e atualizar nome do app (`strings.xml`, `settings.gradle.kts`, `metadata.json`) | Projeto identifica-se como `DOLARAP` com `applicationId` único e `namespace` preservado. | APROVADA |
+| **E01-T02** | Configurar dependências no `libs.versions.toml` e `app/build.gradle.kts` | Koin, Navigation Compose, WorkManager, Room, Retrofit, OkHttp, Coroutines e JUnit configurados e compilando sem erros. | APROVADA |
+| **E01-T03** | Declarar permissões no `AndroidManifest.xml` | `INTERNET` e `ACCESS_NETWORK_STATE` declaradas corretamente no manifesto. | APROVADA |
+| **E01-T04** | Criar estrutura de pacotes (`presentation`, `domain`, `data`, `di`) e classe `DolarapApplication` | Pacotes criados no módulo `:app`, `Application` registrada no manifesto com Koin inicializado e build verde. | APROVADA |
+| **E01-T05** | Configurar tema Material 3 base e ícone adaptativo do DOLARAP | Tema base do DOLARAP configurado em `presentation/theme` e build executando sem erros. | APROVADA |
 
 ---
 
-## E02 — Banco de dados local (Room) *(aguardando revisão externa)*
+## E02 — Banco de dados local (Room) *(Implementação e testes concluídos — aguardando revisão externa)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E02-T01** | Criar entidades Room (`SelectedCurrencyEntity`, `QuoteEntity`, `AvailablePairEntity`, `SyncMetadataEntity`) | Entidades mapeadas com chaves primárias, tipos corretos e armazenamento de decimais em string. | CONCLUÍDA |
-| **E02-T02** | Implementar DAOs (`CurrencyDao`, `QuoteDao`, `AvailablePairDao`, `SyncMetadataDao`) | Consultas reativas via `Flow` para moedas selecionadas, cotações, catálogo disponível, favoritos e metadados de sync. | CONCLUÍDA |
-| **E02-T03** | Implementar `DolarapDatabase` com seed das 10 moedas padrão | Seed inicial insere `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY` e `MXN` com `isDefault = true` de forma idempotente. | CONCLUÍDA |
-| **E02-T04** | Criar catálogo complementar local (`ComplementaryCurrencyCatalog`) | Nomes amigáveis em PT-BR e termos de busca estruturados sem habilitar moedas não suportadas pela API. | CONCLUÍDA |
-| **E02-T05** | Escrever testes locais para DAOs e seed das 10 moedas padrão | Testes verificam inserção inicial das 10 moedas, persistência de favoritos e atualização sem perda de estado. | CONCLUÍDA |
+| **E02-T01** | Criar entidades Room (`SelectedCurrencyEntity`, `QuoteEntity`, `AvailablePairEntity`, `SyncMetadataEntity`) | Entidades mapeadas com chaves primárias, tipos corretos e armazenamento de decimais em string. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E02-T02** | Implementar DAOs (`CurrencyDao`, `QuoteDao`, `AvailablePairDao`, `SyncMetadataDao`) | Consultas reativas via `Flow` para moedas selecionadas, cotações, catálogo disponível, favoritos e metadados de sync. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E02-T03** | Implementar `DolarapDatabase` com seed das 10 moedas padrão | Seed inicial insere `USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY` e `MXN` com `isDefault = true` de forma idempotente. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E02-T04** | Criar catálogo complementar local (`ComplementaryCurrencyCatalog`) | Nomes amigáveis em PT-BR e termos de busca estruturados sem habilitar moedas não suportadas pela API. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E02-T05** | Escrever testes locais para DAOs e seed das 10 moedas padrão | Testes verificam inserção inicial das 10 moedas, persistência de favoritos e atualização sem perda de estado. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
 
 ---
 

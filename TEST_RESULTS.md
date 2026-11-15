@@ -1,6 +1,6 @@
 # TEST_RESULTS — DOLARAP
 
-> **Status geral:** Etapa E02 executada em `2026-11-15` (`gradle :app:assembleDebug :app:testDebugUnitTest`). Os registros planejados da Etapa E00 (`UT-01`–`UT-14` e `MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
+> **Status geral:** Etapa E02 (implementação e testes) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (14 testes no total: 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E02**. Os registros planejados da Etapa E00 (`UT-01`–`UT-14` e `MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
 
 ## Legenda de Status
 - `NÃO EXECUTADO` — Caso de teste planejado, aguardando implementação da funcionalidade correspondente.
@@ -14,7 +14,7 @@
 
 | Etapa | Data | Executor | Ambiente / Build | Observações | Status |
 |---|---|---|---|---|---|
-| E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric) | APROVADO |
+| E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric); etapa aguardando revisão externa | APROVADO |
 | E03 — Integração AwesomeAPI | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 | E04 — Camada de Domínio | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 | E05/E06 — Interface e Offline First | - | - | - | Aguardando implementação | NÃO EXECUTADO |
