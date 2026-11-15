@@ -59,30 +59,30 @@ Legenda de status:
 
 ---
 
-## E04 — Camada de domínio e repositórios *(Implementação e testes concluídos — aguardando revisão externa)*
+## E04 — Camada de domínio e repositórios *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E04-T01** | Criar modelos e erros de domínio puros (`CurrencyQuote`, `AvailableCurrency`, `ConversionResult`, `SyncStatus`, `DomainError`) | Todos os modelos em `domain/model` (`CurrencyModels.kt`, `AvailableCurrency.kt`, `ConversionResult.kt`, `DomainResult.kt`) sem imports de Android, Room, Retrofit, Moshi ou Compose. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T02** | Definir contratos `QuoteRepository`, `CatalogRepository` (e abstração de tempo `TimeProvider`) | Contratos `QuoteRepository` e `CatalogRepository` definidos no pacote `domain/repository`; `SyncScheduler` permanece reservado à Etapa E06 (WorkManager). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T03** | Implementar `CurrencyConverter` com `BigDecimal` e taxa `bid` | Cálculos `X -> BRL`, `BRL -> Y`, `X -> Y` (via BRL), mesma moeda, entrada com vírgula/ponto, escalas por moeda de destino (`HALF_UP`), `MathContext.DECIMAL128` e rejeição segura de cotação ausente/`bid <= 0` ou valor inválido. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T04** | Implementar `QuoteFreshnessEvaluator` (regra de 15 minutos) e casos de uso de cotações e favoritos | `ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase`, `ToggleFavoriteUseCase` e `ConvertCurrencyUseCase` implementados com avaliação de `QuoteFreshnessStatus` (`FRESH`, `STALE` > 15 min, `UNAVAILABLE`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T05** | Implementar casos de uso do catálogo, pesquisa, validação de par, adição e remoção | `ObserveAvailableCurrenciesUseCase`, `SearchAvailableCurrenciesUseCase` (código/nome sem acentos), `RefreshCatalogUseCase`, `AddCurrencyUseCase` (valida `*-BRL` + melhor esforço de cotação) e `RemoveCurrencyUseCase` (protege as 10 padrão). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T06** | Implementar `QuoteRepositoryImpl` e `CatalogRepositoryImpl` (SSOT Room) + `DataModule`/`DomainModule` | Fluxo Offline First via `Flow` do Room, deduplicação de sync concorrente (`Mutex` + `CompletableDeferred`), preservação de cache em falha e registro completo no Koin (`appModules`) sem ciclos. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E04-T07** | Criar testes unitários JUnit e de integração para domínio, repositórios e Koin | 21 testes da E04 (16 unitários puros + 4 integração Room/MockWebServer/Robolectric + 1 integração Koin) executados e aprovados em `gradle :app:testDebugUnitTest`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E04-T01** | Criar modelos e erros de domínio puros (`CurrencyQuote`, `AvailableCurrency`, `ConversionResult`, `SyncStatus`, `DomainError`) | Todos os modelos em `domain/model` (`CurrencyModels.kt`, `AvailableCurrency.kt`, `ConversionResult.kt`, `DomainResult.kt`) sem imports de Android, Room, Retrofit, Moshi ou Compose. | APROVADA |
+| **E04-T02** | Definir contratos `QuoteRepository`, `CatalogRepository` (e abstração de tempo `TimeProvider`) | Contratos `QuoteRepository` e `CatalogRepository` definidos no pacote `domain/repository`; `SyncScheduler` permanece reservado à Etapa E06 (WorkManager). | APROVADA |
+| **E04-T03** | Implementar `CurrencyConverter` com `BigDecimal` e taxa `bid` | Cálculos `X -> BRL`, `BRL -> Y`, `X -> Y` (via BRL), mesma moeda, entrada com vírgula/ponto, escalas por moeda de destino (`HALF_UP`), `MathContext.DECIMAL128` e rejeição segura de cotação ausente/`bid <= 0` ou valor inválido. | APROVADA |
+| **E04-T04** | Implementar `QuoteFreshnessEvaluator` (regra de 15 minutos) e casos de uso de cotações e favoritos | `ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase`, `ToggleFavoriteUseCase` e `ConvertCurrencyUseCase` implementados com avaliação de `QuoteFreshnessStatus` (`FRESH`, `STALE` > 15 min, `UNAVAILABLE`). | APROVADA |
+| **E04-T05** | Implementar casos de uso do catálogo, pesquisa, validação de par, adição e remoção | `ObserveAvailableCurrenciesUseCase`, `SearchAvailableCurrenciesUseCase` (código/nome sem acentos), `RefreshCatalogUseCase`, `AddCurrencyUseCase` (valida `*-BRL` + melhor esforço de cotação) e `RemoveCurrencyUseCase` (protege as 10 padrão). | APROVADA |
+| **E04-T06** | Implementar `QuoteRepositoryImpl` e `CatalogRepositoryImpl` (SSOT Room) + `DataModule`/`DomainModule` | Fluxo Offline First via `Flow` do Room, deduplicação de sync concorrente (`Mutex` + `CompletableDeferred`), preservação de cache em falha e registro completo no Koin (`appModules`) sem ciclos. | APROVADA |
+| **E04-T07** | Criar testes unitários JUnit e de integração para domínio, repositórios e Koin | 21 testes da E04 (16 unitários puros + 4 integração Room/MockWebServer/Robolectric + 1 integração Koin) executados e aprovados em `gradle :app:testDebugUnitTest`. | APROVADA |
 
 ---
 
-## E05 — Interface (Jetpack Compose)
+## E05 — Interface (Jetpack Compose) *(Implementação e testes concluídos — aguardando revisão externa)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E05-T01** | Configurar `DolarapNavGraph` com Navigation Compose | Navegação funcional entre Tela Inicial de Cotações, Pesquisa/Adição de Moedas e Conversor. | PENDENTE |
-| **E05-T02** | Implementar `QuotesViewModel` e `QuotesScreen` (Tela inicial + Favoritos) | Exibe lista com `bid`, `ask`, variação, data/hora da última atualização, filtro de favoritos, atualização manual e ação de remoção apenas para moedas do usuário. | PENDENTE |
-| **E05-T03** | Implementar banners/indicadores de estado Offline e Desatualizado (> 15 min) | UI indica de forma clara quando exibe dados em cache offline ou com mais de 15 minutos desde o último sync bem-sucedido. | PENDENTE |
-| **E05-T04** | Implementar `CurrencySearchViewModel` e `CurrencySearchScreen` | Pesquisa em tempo real por nome e código no catálogo validado, exibição de status (padrão/adicionada/disponível) e ações de adicionar/remover. | PENDENTE |
-| **E05-T05** | Implementar `ConverterViewModel` e `ConverterScreen` | Entrada numérica, seleção de origem/destino, inversão de moedas, cálculo em `BigDecimal` com `bid` e mensagem amigável quando não houver cotação disponível. | PENDENTE |
-| **E05-T06** | Garantir estados `Loading`, `Success`, `Empty` e `Error` em todas as telas | Todas as telas renderizam estados de carregamento, vazio, erro recuperável e sucesso mantendo acessibilidade e `testTag`s. | PENDENTE |
+| **E05-T01** | Configurar `DolarapNavGraph` com Navigation Compose | Navegação funcional (`DolarapApp` + `DolarapNavHost` + `navigateSingleTopTo`) com `NavigationBar`/`NavigationRail` adaptativa, preservação de estado entre abas e sem duplicação na pilha. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T02** | Implementar `QuotesViewModel` e `QuotesScreen` (Tela inicial + Favoritos) | Exibe 10 padrão + adicionais com `bid`, `ask`, variação (`pctChange`/`varBid`), timestamp, filtro `Todas`/`Favoritas`, pull-to-refresh/atualização manual e remoção restrita às moedas adicionadas. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T03** | Implementar banners/indicadores de estado Offline e Desatualizado (> 15 min) | `FreshnessBadge` e `StatusBannerCard` sinalizam dados `FRESH`, `STALE` (> 15 min) e `UNAVAILABLE` na Tela Inicial e no Conversor sem apagar cache local. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T04** | Implementar `CurrencySearchViewModel` e `CurrencySearchScreen` | Pesquisa em tempo real por código/nome via `SearchAvailableCurrenciesUseCase`, status (`Padrão (protegida)`/`Selecionada`/`Disponível`), proteção contra duplicidade/em voo e atualização de catálogo. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T05** | Implementar `ConverterViewModel` e `ConverterScreen` | Seletor com BRL + 10 padrão + adicionais, inversão rápida, entrada numérica, cálculo 100% via `ConvertCurrencyUseCase` (`BigDecimal`/`bid`), taxa complementar `ask`/cruzada e aviso de indisponibilidade/desatualização. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T06** | Garantir estados `Loading`, `Success`, `Empty` e `Error` em todas as telas + testes | Todas as telas implementam estados explícitos, `testTag`s, acessibilidade, `PresentationModule` no Koin e 22 testes da E05 (ViewModels, Formatter, DI e Robolectric Compose UI/contraste) aprovados. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
 
 ---
 

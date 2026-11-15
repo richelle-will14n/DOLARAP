@@ -1,6 +1,6 @@
 # TEST_RESULTS — DOLARAP
 
-> **Status geral:** Etapa E04 (camada `domain` pura, conversor `BigDecimal`, regra de 15 minutos, repositórios SSOT Room e integração Koin) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (53 testes no total: 21 da E04 + 18 da E03 + 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E04**. Os registros manuais/UI da Etapa E00 (`MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
+> **Status geral:** Etapa E05 (interface Jetpack Compose, Material 3, Navigation Compose, `QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`, `PresentationModule`, formatador brasileiro e testes de UI/Robolectric) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (75 testes no total: 22 da E05 + 21 da E04 + 18 da E03 + 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E05**. Os registros manuais/UI em dispositivo real da Etapa E00 (`MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
 
 ## Legenda de Status
 - `NÃO EXECUTADO` — Caso de teste planejado, aguardando implementação da funcionalidade correspondente.
@@ -16,8 +16,9 @@
 |---|---|---|---|---|---|
 | E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric); etapa aprovada | APROVADO |
 | E03 — Integração AwesomeAPI | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 18/18 testes da E03 aprovados (7 unitários puros + 11 integração MockWebServer/Room/Koin via Robolectric); etapa aprovada | APROVADO |
-| E04 — Camada de Domínio e Repositórios | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 21/21 testes da E04 aprovados (16 unitários puros + 5 integração Repository/Room/MockWebServer/Koin via Robolectric); etapa aguardando revisão externa | APROVADO |
-| E05/E06 — Interface e Offline First | - | - | - | Aguardando implementação | NÃO EXECUTADO |
+| E04 — Camada de Domínio e Repositórios | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 21/21 testes da E04 aprovados (16 unitários puros + 5 integração Repository/Room/MockWebServer/Koin via Robolectric); etapa aprovada | APROVADO |
+| E05 — Interface Jetpack Compose | 2026-11-15 | Agente (JVM + Robolectric + Compose UI Test) | `gradle :app:testDebugUnitTest` (SDK 36) | 22/22 testes da E05 aprovados (15 unitários ViewModels/Formatter + 1 integração DI Koin + 6 UI/Navegação/Contraste Compose via Robolectric); etapa aguardando revisão externa | APROVADO |
+| E06 — Offline First (WorkManager) | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 | E07 — Validação Final de Entrega | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 
 ---
@@ -140,6 +141,38 @@ Execução realizada em **2026-11-15** via `gradle :app:assembleDebug :app:testD
 | **E04-IT-04** | `CatalogRepositoryImpl` sincroniza catálogo, pesquisa, valida par suportado ao adicionar e persiste favorito | Integração Repo + Room + `MockWebServer` | `app/src/test/java/com/aistudio/dolarap/data/repository/QuoteAndCatalogRepositoryIntegrationTest.kt` | APROVADO | Sem falhas |
 | **E04-IT-05** | Koin resolve `dataModule` e `domainModule` (repositórios, serviços e 9 UseCases) sem dependências circulares | Integração DI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/di/KoinDomainModuleTest.kt` | APROVADO | Sem falhas |
 | **E04-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) | Instrumentado (`androidTest`) | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de execução sem emulador Android ou ADB disponível |
+
+---
+
+## 7. Execução da Etapa E05 — Interface com Jetpack Compose
+
+Execução realizada em **2026-11-15** via `gradle :app:assembleDebug :app:testDebugUnitTest` (JUnit 4 + Coroutines Test + Compose UI Test + Navigation Compose + Koin + Robolectric SDK 36). Todos os 22 novos testes da E05 passaram, totalizando **75 testes aprovados** no projeto (22 E05 + 21 E04 + 18 E03 + 12 E02 + 2 E01), com 0 falhas, 0 erros e 0 ignorados.
+
+| ID | Descrição | Tipo de Teste | Arquivo de Teste | Resultado | Observações |
+|---|---|---|---|---|---|
+| **E05-UT-01** | Formata taxa BRL (`bid`/`ask`) com separador decimal brasileiro e agrupamento de milhar | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/presentation/format/BrazilianFormatterTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-02** | Formata valores convertidos respeitando casas decimais do destino (`BRL` = 2, `JPY` = 0) | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/presentation/format/BrazilianFormatterTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-03** | Formata variação percentual positiva, negativa e zero | Unitário (JUnit) | `app/src/test/java/com/aistudio/dolarap/presentation/format/BrazilianFormatterTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-04** | `QuotesViewModel` carrega as 10 moedas padrão em estado `Success` | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-05** | `QuotesViewModel` emite estado `Empty` quando filtro `Favoritas` está ativo sem favoritos | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-06** | `QuotesViewModel` emite estado `Error` recuperável se o fluxo reativo falhar | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-07** | `QuotesViewModel` preserva lista local e exibe banner não destrutivo ao falhar atualização manual | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-08** | `QuotesViewModel` alterna favorito e popula corretamente o filtro `Favoritas` | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-09** | `QuotesViewModel` protege as 10 moedas padrão e remove moedas adicionais | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-10** | `CurrencySearchViewModel` filtra por nome/código ignorando acentos e maiúsculas e restaura lista ao limpar busca | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/search/CurrencySearchViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-11** | `CurrencySearchViewModel` adiciona moeda suportada, evita duplicidade e protege moeda padrão | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/search/CurrencySearchViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-12** | `CurrencySearchViewModel` exibe `Empty` offline para catálogo vazio e `Error` após falha de refresh | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/search/CurrencySearchViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-13** | `ConverterViewModel` inclui BRL + 10 padrão + adicionais e delega cálculo ao `ConvertCurrencyUseCase` (direta e cruzada) | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/converter/ConverterViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-14** | `ConverterViewModel` inverte origem/destino (`swapCurrencies`) e recalcula corretamente | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/converter/ConverterViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-UT-15** | `ConverterViewModel` trata entrada vazia, valor inválido/negativo, cotação indisponível e sinalização `isStale` (> 15 min) | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/converter/ConverterViewModelTest.kt` | APROVADO | Sem falhas |
+| **E05-IT-01** | Koin resolve `QuotesViewModel`, `CurrencySearchViewModel` e `ConverterViewModel` via `presentationModule` | Integração DI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/di/KoinPresentationModuleTest.kt` | APROVADO | Sem falhas |
+| **E05-UI-01** | `DolarapApp` navega entre Cotações, Pesquisa e Conversor sem duplicar destinos na backstack | Compose UI + Navigation (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
+| **E05-UI-02** | `QuotesScreen` exibe banner `STALE`, `bid`/`ask`, oculta remoção para moedas padrão, alterna favoritos e exibe `Empty` state | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Ajustado scroll em `EmptyStateView` e teste para janelas compactas no Robolectric |
+| **E05-UI-03** | `QuotesScreen` renderiza estados explícitos `Loading` e `Error` com ação de tentar novamente | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
+| **E05-UI-04** | `CurrencySearchScreen` filtra em tempo real, oculta remoção para padrão e adiciona moeda adicional | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
+| **E05-UI-05** | `ConverterScreen` calcula `USD -> BRL`, inverte para `BRL -> USD` e exibe aviso quando falta cotação local | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
+| **E05-UI-06** | `QuotesHeaderCard` exibe textos, badge e botão com cores sólidas e contraste WCAG >= 4.5:1 / 7.0:1 nos temas claro e escuro | Compose UI + Contraste (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Adicionado na correção visual E05 |
+| **E05-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) | Instrumentado (`androidTest`) | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de execução sem emulador Android ou ADB disponível |
 
 
 

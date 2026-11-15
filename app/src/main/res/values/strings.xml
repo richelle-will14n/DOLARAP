@@ -1,5 +1,95 @@
 <resources>
     <string name="app_name">DOLARAP</string>
-    <string name="e01_placeholder_subtitle">Estrutura inicial preparada (Etapa E01)</string>
-    <string name="e01_placeholder_status">Fundação técnica configurada com Kotlin, Jetpack Compose e Koin.</string>
+    <string name="app_tagline">Câmbio e Conversão Offline-First</string>
+
+    <!-- Navegação -->
+    <string name="nav_quotes">Cotações</string>
+    <string name="nav_search">Moedas</string>
+    <string name="nav_converter">Conversor</string>
+
+    <!-- Ações e rótulos comuns -->
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_clear">Limpar</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_add">Adicionar</string>
+    <string name="action_remove">Remover</string>
+    <string name="action_swap_currencies">Inverter moedas</string>
+    <string name="action_view_all">Ver todas</string>
+
+    <!-- Tela de Cotações -->
+    <string name="quotes_title">Cotações em BRL</string>
+    <string name="quotes_filter_all">Todas</string>
+    <string name="quotes_filter_favorites">Favoritas</string>
+    <string name="quotes_last_sync_format">Última atualização: %1$s</string>
+    <string name="quotes_never_synced">Aguardando primeira sincronização</string>
+    <string name="quotes_bid_label">Compra (bid)</string>
+    <string name="quotes_ask_label">Venda (ask)</string>
+    <string name="quotes_unavailable_value">Indisponível</string>
+    <string name="quotes_badge_fresh">Atualizada</string>
+    <string name="quotes_badge_stale">Desatualizada (&gt; 15 min)</string>
+    <string name="quotes_badge_unavailable">Sem cotação</string>
+    <string name="quotes_badge_default">Padrão</string>
+    <string name="quotes_stale_banner_title">Dados desatualizados (&gt; 15 min)</string>
+    <string name="quotes_stale_banner_message">As cotações exibidas têm mais de 15 minutos. Toque em Atualizar quando houver conexão.</string>
+    <string name="quotes_empty_favorites_title">Nenhuma moeda favorita</string>
+    <string name="quotes_empty_favorites_message">Toque na estrela de qualquer moeda na lista principal para acompanhar seus favoritos aqui.</string>
+    <string name="quotes_empty_list_title">Nenhuma moeda selecionada</string>
+    <string name="quotes_empty_list_message">Adicione moedas suportadas ou atualize as cotações para começar.</string>
+    <string name="quotes_loading_message">Carregando cotações salvas…</string>
+    <string name="quotes_favorite_add_cd">Marcar %1$s como favorita</string>
+    <string name="quotes_favorite_remove_cd">Remover %1$s dos favoritos</string>
+    <string name="quotes_remove_currency_cd">Remover moeda %1$s</string>
+    <string name="quotes_quick_search">Pesquisar moedas</string>
+    <string name="quotes_quick_converter">Abrir conversor</string>
+
+    <!-- Tela de Pesquisa e Adição -->
+    <string name="search_title">Pesquisar e Adicionar</string>
+    <string name="search_hint">Buscar por código ou nome (ex.: CHF, Franco)</string>
+    <string name="search_refresh_catalog">Atualizar catálogo</string>
+    <string name="search_status_default">Padrão (protegida)</string>
+    <string name="search_status_selected">Selecionada</string>
+    <string name="search_status_available">Disponível (%1$s)</string>
+    <string name="search_adding_label">Adicionando…</string>
+    <string name="search_removing_label">Removendo…</string>
+    <string name="search_empty_catalog_title">Catálogo ainda não carregado</string>
+    <string name="search_empty_catalog_message">Conecte-se à internet e toque em Atualizar catálogo para consultar os pares suportados pela AwesomeAPI.</string>
+    <string name="search_empty_query_title">Nenhuma moeda encontrada</string>
+    <string name="search_empty_query_message">Nenhum par suportado com BRL corresponde a \"%1$s\".</string>
+    <string name="search_loading_message">Consultando catálogo de moedas…</string>
+    <string name="search_feedback_added">%1$s adicionada às suas cotações.</string>
+    <string name="search_feedback_removed">%1$s removida da sua lista.</string>
+    <string name="search_feedback_catalog_synced">Catálogo atualizado com %1$d pares suportados em BRL.</string>
+
+    <!-- Tela de Conversor -->
+    <string name="converter_title">Conversor de Moedas</string>
+    <string name="converter_amount_label">Valor para converter</string>
+    <string name="converter_amount_placeholder">Ex.: 100,00</string>
+    <string name="converter_source_label">De</string>
+    <string name="converter_target_label">Para</string>
+    <string name="converter_result_label">Valor convertido</string>
+    <string name="converter_rate_label">Taxa utilizada (bid)</string>
+    <string name="converter_ask_info_format">Venda complementar (ask): %1$s</string>
+    <string name="converter_cross_info_format">Via BRL • %1$s/BRL: %2$s • %3$s/BRL: %4$s</string>
+    <string name="converter_quote_date_format">Referência da cotação: %1$s</string>
+    <string name="converter_stale_warning">Cotação desatualizada (&gt; 15 min). Atualize as cotações para obter a taxa mais recente.</string>
+    <string name="converter_empty_amount_title">Informe um valor</string>
+    <string name="converter_empty_amount_message">Digite uma quantia acima para calcular a conversão utilizando a taxa de compra (bid).</string>
+    <string name="converter_invalid_amount_message">Valor inválido. Digite um número maior ou igual a zero (ex.: 100,50).</string>
+    <string name="converter_unavailable_quote_title">Cotação indisponível localmente</string>
+    <string name="converter_unavailable_quote_message">Não há cotação local válida para %1$s. Atualize as cotações quando houver internet.</string>
+    <string name="converter_selector_title">Selecionar moeda</string>
+    <string name="converter_loading_message">Preparando moedas e cotações…</string>
+
+    <!-- Mensagens de Erro de Domínio -->
+    <string name="error_no_connection">Sem conexão com a internet. Os dados locais foram preservados.</string>
+    <string name="error_timeout">Tempo de resposta excedido ao consultar a AwesomeAPI.</string>
+    <string name="error_unsupported_pair">Par %1$s não é suportado pelo catálogo oficial da AwesomeAPI.</string>
+    <string name="error_rate_limited">Limite de requisições atingido na AwesomeAPI. Tente novamente em instantes.</string>
+    <string name="error_api_unavailable">Serviço da AwesomeAPI temporariamente indisponível.</string>
+    <string name="error_invalid_api_response">Resposta inválida recebida do provedor de cotações.</string>
+    <string name="error_default_currency_protected">%1$s faz parte das 10 moedas padrão e não pode ser removida.</string>
+    <string name="error_currency_already_selected">%1$s já está na sua lista de cotações.</string>
+    <string name="error_currency_not_found">Moeda %1$s não encontrada na seleção atual.</string>
+    <string name="error_unexpected">Não foi possível concluir a operação. Tente novamente.</string>
 </resources>
