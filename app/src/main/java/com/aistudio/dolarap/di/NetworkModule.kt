@@ -1,6 +1,7 @@
 package com.aistudio.dolarap.di
 
 import com.aistudio.dolarap.BuildConfig
+import com.aistudio.dolarap.data.remote.AwesomeApiAuthInterceptor
 import com.aistudio.dolarap.data.remote.AwesomeApiConfig
 import com.aistudio.dolarap.data.remote.AwesomeApiRemoteDataSource
 import com.aistudio.dolarap.data.remote.AwesomeApiService
@@ -25,15 +26,19 @@ val networkModule = module {
   single {
     val logging =
       HttpLoggingInterceptor().apply {
+        redactHeader(AwesomeApiConfig.HEADER_API_KEY)
         level =
           if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC
           else HttpLoggingInterceptor.Level.NONE
       }
 
+    val authInterceptor = AwesomeApiAuthInterceptor { BuildConfig.AWESOME_API_KEY }
+
     OkHttpClient.Builder()
       .connectTimeout(AwesomeApiConfig.CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
       .readTimeout(AwesomeApiConfig.READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
       .writeTimeout(AwesomeApiConfig.WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+      .addInterceptor(authInterceptor)
       .addInterceptor(logging)
       .build()
   }

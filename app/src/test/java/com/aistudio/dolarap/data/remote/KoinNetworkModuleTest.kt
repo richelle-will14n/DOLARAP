@@ -1,5 +1,6 @@
 package com.aistudio.dolarap.data.remote
 
+import com.aistudio.dolarap.BuildConfig
 import com.aistudio.dolarap.data.local.DolarapDatabase
 import com.aistudio.dolarap.data.remote.mapper.QuoteRemoteMapper
 import com.aistudio.dolarap.data.remote.parser.AvailableCatalogParser
@@ -9,6 +10,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
@@ -26,7 +28,7 @@ class KoinNetworkModuleTest {
   }
 
   @Test
-  fun `Koin resolves network stack and AwesomeApiRemoteDataSource with AwesomeAPI baseUrl`() {
+  fun `Koin resolves network stack and AwesomeApiRemoteDataSource with AwesomeAPI baseUrl and auth interceptor`() {
     val koin = GlobalContext.get()
 
     val moshi = koin.get<Moshi>()
@@ -40,6 +42,8 @@ class KoinNetworkModuleTest {
 
     assertNotNull(moshi)
     assertNotNull(okHttp)
+    assertTrue(okHttp.interceptors.any { it is AwesomeApiAuthInterceptor })
+    assertNotNull(BuildConfig.AWESOME_API_KEY)
     assertEquals(AwesomeApiConfig.BASE_URL, retrofit.baseUrl().toString())
     assertNotNull(service)
     assertNotNull(mapper)

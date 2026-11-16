@@ -10,6 +10,9 @@ object AwesomeApiConfig {
   const val READ_TIMEOUT_SECONDS = 15L
   const val WRITE_TIMEOUT_SECONDS = 15L
 
+  const val HEADER_API_KEY = "x-api-key"
+  const val PLACEHOLDER_API_KEY = "AWESOME_API_KEY_DEFAULT_VALUE"
+
   const val ERROR_CODE_COIN_NOT_EXISTS = "CoinNotExists"
   const val TARGET_QUOTE_CODE = "BRL"
 }
