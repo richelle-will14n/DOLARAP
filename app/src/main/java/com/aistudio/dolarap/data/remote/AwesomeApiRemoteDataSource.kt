@@ -17,8 +17,11 @@ import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import okhttp3.ResponseBody
 import retrofit2.Response
 
@@ -88,8 +91,15 @@ class AwesomeApiRemoteDataSource(
           RemoteResult.Success(mapped)
         }
       } else {
-        handleHttpError(response.code(), response.errorBody(), eligiblePairs)
+        handleHttpError(
+          httpCode = response.code(),
+          errorBody = response.errorBody(),
+          retryAfterHeader = response.headers()["Retry-After"],
+          requestedPairs = eligiblePairs,
+        )
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       mapException(e)
     }
@@ -151,6 +161,8 @@ class AwesomeApiRemoteDataSource(
         val rawBody = response.body()?.string().orEmpty()
         availableCatalogParser.parseJsonToBrlPairs(rawBody, updatedAtMillis)
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       mapException(e)
     }
@@ -166,6 +178,8 @@ class AwesomeApiRemoteDataSource(
         val rawBody = response.body()?.string().orEmpty()
         availableCatalogParser.parseXmlToBrlPairs(rawBody, updatedAtMillis)
       }
+    } catch (e: CancellationException) {
+      throw e
     } catch (e: Exception) {
       mapException(e)
     }
@@ -173,6 +187,7 @@ class AwesomeApiRemoteDataSource(
   private suspend fun handleHttpError(
     httpCode: Int,
     errorBody: ResponseBody?,
+    retryAfterHeader: String?,
     requestedPairs: List<String>,
   ): RemoteResult.Error {
     val parsedError = parseApiError(errorBody)
@@ -192,12 +207,16 @@ class AwesomeApiRemoteDataSource(
       )
     }
 
+    val retryAfterSeconds =
+      if (httpCode == 429) parseRetryAfterSeconds(retryAfterHeader) else null
+
     return if (httpCode in 400..499) {
       RemoteResult.Error(
         RemoteError.HttpError(
           httpCode = httpCode,
           apiCode = parsedError?.code,
           apiMessage = parsedError?.message,
+          retryAfterSeconds = retryAfterSeconds,
         )
       )
     } else {
@@ -210,12 +229,16 @@ class AwesomeApiRemoteDataSource(
   private fun mapCatalogHttpError(response: Response<ResponseBody>): RemoteResult.Error {
     val httpCode = response.code()
     val parsedError = parseApiError(response.errorBody())
+    val retryAfterSeconds =
+      if (httpCode == 429) parseRetryAfterSeconds(response.headers()["Retry-After"]) else null
+
     return if (httpCode in 400..499) {
       RemoteResult.Error(
         RemoteError.HttpError(
           httpCode = httpCode,
           apiCode = parsedError?.code,
           apiMessage = parsedError?.message,
+          retryAfterSeconds = retryAfterSeconds,
         )
       )
     } else {
@@ -266,9 +289,42 @@ class AwesomeApiRemoteDataSource(
       else -> RemoteResult.Error(RemoteError.Unexpected(exception.message))
     }
 
-  private companion object {
+  internal companion object {
     val PAIR_REGEX = Regex("^[A-Z]{3}-BRL$")
     val PAIR_FIND_REGEX = Regex("\\b[A-Z]{3}-BRL\\b")
     val PAIR_COMPACT_FIND_REGEX = Regex("\\b([A-Z]{3})BRL\\b")
+
+    private val HTTP_DATE_PATTERNS =
+      listOf(
+        "EEE, dd MMM yyyy HH:mm:ss z",
+        "EEEE, dd-MMM-yy HH:mm:ss z",
+        "EEE MMM d HH:mm:ss yyyy",
+      )
+
+    fun parseRetryAfterSeconds(
+      headerValue: String?,
+      nowMillis: Long = System.currentTimeMillis(),
+    ): Long? {
+      val trimmed = headerValue?.trim().orEmpty()
+      if (trimmed.isEmpty()) return null
+
+      trimmed.toLongOrNull()?.let { numericSeconds ->
+        return if (numericSeconds >= 0L) numericSeconds else null
+      }
+
+      for (pattern in HTTP_DATE_PATTERNS) {
+        val formatter =
+          SimpleDateFormat(pattern, Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("GMT")
+            isLenient = false
+          }
+        val parsed = runCatching { formatter.parse(trimmed) }.getOrNull()
+        if (parsed != null) {
+          val diffMillis = parsed.time - nowMillis
+          return if (diffMillis <= 0L) 0L else (diffMillis + 999L) / 1000L
+        }
+      }
+      return null
+    }
   }
 }

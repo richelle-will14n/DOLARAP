@@ -13,7 +13,10 @@ sealed interface DomainError {
 
   data class UnsupportedPair(val pairCode: String?) : DomainError
 
-  data class RateLimited(val httpCode: Int = 429) : DomainError
+  data class RateLimited(
+    val httpCode: Int = 429,
+    val retryAfterSeconds: Long? = null,
+  ) : DomainError
 
   data class ApiUnavailable(val httpCode: Int? = null, val message: String? = null) : DomainError
 

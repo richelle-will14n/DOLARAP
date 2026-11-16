@@ -32,6 +32,13 @@
     <string name="quotes_badge_default">Padrão</string>
     <string name="quotes_stale_banner_title">Dados desatualizados (&gt; 15 min)</string>
     <string name="quotes_stale_banner_message">As cotações exibidas têm mais de 15 minutos. Toque em Atualizar quando houver conexão.</string>
+    <string name="quotes_offline_banner_title">Sem conexão no momento</string>
+    <string name="quotes_offline_banner_message">Exibindo os dados locais salvos no aparelho.</string>
+    <string name="quotes_offline_retry_scheduled_message">Exibindo os dados locais salvos. A sincronização automática ocorrerá quando a internet voltar.</string>
+    <string name="quotes_sync_error_banner_title">Falha na última sincronização</string>
+    <string name="quotes_sync_error_banner_message">Os dados locais foram mantidos intactos. Toque em Atualizar para tentar novamente.</string>
+    <string name="quotes_sync_error_retry_scheduled_message">Os dados locais foram mantidos. Uma nova tentativa em segundo plano está agendada.</string>
+    <string name="quotes_syncing_label">Sincronizando cotações…</string>
     <string name="quotes_empty_favorites_title">Nenhuma moeda favorita</string>
     <string name="quotes_empty_favorites_message">Toque na estrela de qualquer moeda na lista principal para acompanhar seus favoritos aqui.</string>
     <string name="quotes_empty_list_title">Nenhuma moeda selecionada</string>

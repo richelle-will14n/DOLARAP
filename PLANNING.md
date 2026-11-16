@@ -1,6 +1,6 @@
 # PLANNING — DOLARAP
 
-> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E05 (E00–E04 aprovadas; E05 implementada e testada, aguardando revisão externa; E06–E07 planejadas).
+> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E06 (E00–E04 aprovadas; E05 e E06 implementadas e testadas, aguardando revisão externa; E07 planejada).
 
 ## 1. Arquitetura Proposta
 
@@ -39,7 +39,7 @@ presentation (Compose + ViewModels + StateFlow)
 | **java.math.BigDecimal** | Cálculos monetários | Evita erros de precisão binária inerentes a `Double`/`Float` em conversões financeiras. |
 | **JUnit (e Coroutines Test / Robolectric se aplicável)** | Testes unitários | Verificação rápida e determinística de casos de uso, regras de negócio, mappers e repositório na JVM. |
 
-> **Nota sobre o estado das dependências (após E05):** O projeto já possui configurados e ativos no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1`, `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 (com codegen KSP) + OkHttp 4.10.0 (+ MockWebServer 4.10.0 em testes)`, `WorkManager 2.10.1` (reservado à E06), `Coroutines 1.10.2`, `JUnit 4.13.2`, `Robolectric 4.16.1` e `Compose UI Test`. Até a E05, estão implementados a fundação Koin, a camada local Room (`E02`), a camada remota da AwesomeAPI (`E03`), a camada pura de domínio e repositórios SSOT (`E04`) e a interface completa em Jetpack Compose + Navigation Compose (`E05`).
+> **Nota sobre o estado das dependências (após E06):** O projeto possui configurados e ativos no Gradle `Kotlin 2.2.10`, `AGP 9.1.1`, `KSP 2.3.5`, `Compose BOM 2024.09.00`, `Navigation Compose 2.8.9`, `Koin BOM 4.1.1` (incluindo `koin-androidx-workmanager`), `Room 2.7.0`, `Retrofit 2.12.0 + Moshi 1.15.2 (com codegen KSP) + OkHttp 4.10.0 (+ MockWebServer 4.10.0 em testes)`, `WorkManager 2.10.1` (`work-runtime-ktx` ativo na E06), `Coroutines 1.10.2`, `JUnit 4.13.2`, `Robolectric 4.16.1` e `Compose UI Test`. Até a E06, estão implementados a fundação Koin, a camada local Room (`E02`), a camada remota da AwesomeAPI com autenticação por API Key (`E03` + Auth), a camada pura de domínio e repositórios SSOT (`E04`), a interface completa em Jetpack Compose + Navigation Compose (`E05`) e a sincronização automática + Offline First completo com WorkManager (`E06`).
 
 ---
 
@@ -49,15 +49,15 @@ Dentro de `app/src/main/java/com/aistudio/dolarap/` (`namespace` e `applicationI
 
 ```text
 com.aistudio.dolarap
-├── DolarapApplication.kt               # Inicialização do Koin (e WorkManager periódico na E06)
+├── DolarapApplication.kt               # Inicialização do Koin, Configuration.Provider (KoinWorkerFactory) e agendamento periódico 6h (E06)
 ├── MainActivity.kt                     # Entry point Compose com enableEdgeToEdge + DolarapTheme + DolarapApp
 ├── di/
 │   ├── AppModule.kt                    # Lista de módulos Koin ativos (database, network, data, domain, presentation)
 │   ├── DatabaseModule.kt               # (E02) Provisão singleton de DolarapDatabase e DAOs
-│   ├── NetworkModule.kt                # (E03) Moshi, OkHttpClient, Retrofit, AwesomeApiService e RemoteDataSource
-│   ├── DataModule.kt                   # (E04) SystemTimeProvider, Mappers e Repositories SSOT (Worker na E06)
-│   ├── DomainModule.kt                 # (E04) CurrencyConverter, QuoteFreshnessEvaluator e 9 UseCases
-│   └── PresentationModule.kt           # (E05) ViewModels (QuotesViewModel, CurrencySearchViewModel, ConverterViewModel)
+│   ├── NetworkModule.kt                # (E03 + Auth) Moshi, OkHttpClient, AwesomeApiAuthInterceptor, Retrofit, AwesomeApiService e RemoteDataSource
+│   ├── DataModule.kt                   # (E04 + E06) SystemTimeProvider, Mappers, Repositories SSOT, SyncScheduler e SyncQuotesWorker
+│   ├── DomainModule.kt                 # (E04 + E06) CurrencyConverter, QuoteFreshnessEvaluator e 9 UseCases (RefreshQuotesUseCase integrado ao SyncScheduler)
+│   └── PresentationModule.kt           # (E05 + E06) ViewModels (QuotesViewModel observando SyncScheduler, CurrencySearchViewModel, ConverterViewModel)
 ├── domain/                             # (E04) Camada Kotlin/JDK pura
 │   ├── model/
 │   │   ├── CurrencyModels.kt           # CurrencyDefaults, QuoteFreshnessStatus, QuoteRate, CurrencyQuote, SyncStatus, DashboardQuotesSnapshot
@@ -71,7 +71,7 @@ com.aistudio.dolarap
 │   │   ├── CurrencyConverter.kt        # (E04) Regra pura de cálculo com BigDecimal e taxa bid
 │   │   ├── QuoteFreshnessEvaluator.kt  # (E04) Regra de 15 minutos (FRESH / STALE / UNAVAILABLE)
 │   │   ├── TimeProvider.kt             # (E04) Abstração pura de relógio para testabilidade
-│   │   └── SyncScheduler.kt            # (Planejado E06) Abstração de agendamento (periódico 6h e retry com rede)
+│   │   └── SyncScheduler.kt            # (E06) Abstração pura de agendamento (periódico 6h, retry com rede e observeSyncState)
 │   └── usecase/
 │       ├── ObserveDashboardQuotesUseCase.kt
 │       ├── RefreshQuotesUseCase.kt
@@ -119,9 +119,9 @@ com.aistudio.dolarap
 │   │   └── CatalogRepositoryImpl.kt    # SSOT Room + deduplicação de catálogo + validação *-BRL
 │   ├── time/                           # (E04)
 │   │   └── SystemTimeProvider.kt
-│   └── worker/                         # (Planejado E06)
-│       ├── SyncQuotesWorker.kt         # CoroutineWorker para sincronização em background
-│       └── WorkManagerSyncScheduler.kt # Agendamento único (periódico 6h + retry CONNECTED)
+│   └── worker/                         # (E06) Sincronização em segundo plano com WorkManager
+│       ├── SyncQuotesWorker.kt         # CoroutineWorker com tratamento de HTTP 429/Retry-After, backoff limitado e falhas permanentes
+│       └── WorkManagerSyncScheduler.kt # Agendamento único (periódico 6h + retry CONNECTED) e Flow<BackgroundSyncInfo>
 └── presentation/                       # (E05) Interface Jetpack Compose + MVVM
     ├── navigation/
     │   └── DolarapNavGraph.kt          # DolarapApp, DolarapNavHost, rotas e NavigationBar/NavigationRail adaptativa

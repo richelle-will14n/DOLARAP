@@ -12,7 +12,10 @@ class RemoteErrorMapper {
       is RemoteError.CoinNotExists -> DomainError.UnsupportedPair(remoteError.pairCode)
       is RemoteError.HttpError ->
         if (remoteError.httpCode == 429) {
-          DomainError.RateLimited(httpCode = 429)
+          DomainError.RateLimited(
+            httpCode = 429,
+            retryAfterSeconds = remoteError.retryAfterSeconds,
+          )
         } else {
           DomainError.ApiUnavailable(
             httpCode = remoteError.httpCode,

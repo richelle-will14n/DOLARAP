@@ -4,6 +4,14 @@ import com.aistudio.dolarap.domain.model.CurrencyQuote
 import com.aistudio.dolarap.domain.model.SyncStatus
 import com.aistudio.dolarap.presentation.format.UiText
 
+enum class QuotesSyncPhase {
+  WAITING_FIRST_SYNC,
+  SYNCING,
+  COMPLETED,
+  OFFLINE,
+  FAILED,
+}
+
 sealed interface QuotesUiState {
   data object Loading : QuotesUiState
 
@@ -13,6 +21,8 @@ sealed interface QuotesUiState {
     val isRefreshing: Boolean,
     val bannerError: UiText? = null,
     val feedbackMessage: UiText? = null,
+    val syncPhase: QuotesSyncPhase = QuotesSyncPhase.WAITING_FIRST_SYNC,
+    val isBackgroundRetryScheduled: Boolean = false,
   ) : QuotesUiState
 
   data class Success(
@@ -22,6 +32,8 @@ sealed interface QuotesUiState {
     val isRefreshing: Boolean,
     val bannerError: UiText? = null,
     val feedbackMessage: UiText? = null,
+    val syncPhase: QuotesSyncPhase = QuotesSyncPhase.WAITING_FIRST_SYNC,
+    val isBackgroundRetryScheduled: Boolean = false,
   ) : QuotesUiState
 
   data class Error(

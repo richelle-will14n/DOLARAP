@@ -448,4 +448,27 @@ class AwesomeApiRemoteDataSourceTest {
       assertEquals(1, availablePairDao.countSupportedBrlPairs())
       assertTrue(availablePairDao.isPairSupported("USD-BRL"))
     }
+
+  @Test
+  fun `fetchLastQuotes parses integer and HTTP-date Retry-After headers on HTTP 429`() =
+    runBlocking {
+      mockWebServer.enqueue(
+        MockResponse()
+          .setResponseCode(429)
+          .addHeader("Retry-After", "45")
+          .setBody("""{"status":429,"message":"Too Many Requests"}""")
+      )
+
+      val numericResult = dataSource.fetchLastQuotes(listOf("USD-BRL"))
+      val numericError = (numericResult as RemoteResult.Error).error as RemoteError.HttpError
+      assertEquals(429, numericError.httpCode)
+      assertEquals(45L, numericError.retryAfterSeconds)
+
+      val parsedDateSeconds =
+        AwesomeApiRemoteDataSource.parseRetryAfterSeconds(
+          headerValue = "Wed, 15 Nov 2023 22:14:20 GMT",
+          nowMillis = 1_700_086_400_000L, // Wed, 15 Nov 2023 22:13:20 GMT
+        )
+      assertEquals(60L, parsedDateSeconds)
+    }
 }

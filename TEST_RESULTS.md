@@ -1,6 +1,6 @@
 # TEST_RESULTS — DOLARAP
 
-> **Status geral:** Etapa E05 (interface Jetpack Compose, Material 3, Navigation Compose, `QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`, `PresentationModule`, formatador brasileiro e testes de UI/Robolectric) executada em `2026-11-15` via `gradle :app:assembleDebug :app:testDebugUnitTest` (75 testes no total: 22 da E05 + 21 da E04 + 18 da E03 + 12 da E02 + 2 testes base da E01, todos aprovados), **aguardando revisão externa da etapa E05**. Os registros manuais/UI em dispositivo real da Etapa E00 (`MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB neste ambiente.
+> **Status geral:** Etapa E06 (Offline First completo, `SyncScheduler`, `SyncQuotesWorker`, `WorkManagerSyncScheduler`, agendamento único de 6h, retry `CONNECTED` com HTTP 429/`Retry-After`, estado unificado na UI e integração WorkManager + Room + Flow) executada em `2026-11-16` via `gradle :app:testDebugUnitTest :app:assembleDebug` (**92 testes em 24 suítes**: 14 novos da E06 + 3 da integração `AwesomeApiAuthInterceptor` + 22 da E05 + 21 da E04 + 18 da E03 + 12 da E02 + 2 base da E01, todos aprovados), **aguardando revisão externa da etapa E06**. Os registros manuais/UI em dispositivo real da Etapa E00 (`MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB acessível ao agente neste container.
 
 ## Legenda de Status
 - `NÃO EXECUTADO` — Caso de teste planejado, aguardando implementação da funcionalidade correspondente.
@@ -18,7 +18,7 @@
 | E03 — Integração AwesomeAPI | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 18/18 testes da E03 aprovados (7 unitários puros + 11 integração MockWebServer/Room/Koin via Robolectric); etapa aprovada | APROVADO |
 | E04 — Camada de Domínio e Repositórios | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 21/21 testes da E04 aprovados (16 unitários puros + 5 integração Repository/Room/MockWebServer/Koin via Robolectric); etapa aprovada | APROVADO |
 | E05 — Interface Jetpack Compose | 2026-11-15 | Agente (JVM + Robolectric + Compose UI Test) | `gradle :app:testDebugUnitTest` (SDK 36) | 22/22 testes da E05 aprovados (15 unitários ViewModels/Formatter + 1 integração DI Koin + 6 UI/Navegação/Contraste Compose via Robolectric); etapa aguardando revisão externa | APROVADO |
-| E06 — Offline First (WorkManager) | - | - | - | Aguardando implementação | NÃO EXECUTADO |
+| E06 — Offline First (WorkManager) | 2026-11-16 | Agente (JVM + Robolectric + WorkManager + MockWebServer) | `gradle :app:testDebugUnitTest :app:assembleDebug` (SDK 36) | 14/14 novos testes da E06 aprovados (92/92 no total em 24 suítes); etapa aguardando revisão externa | APROVADO |
 | E07 — Validação Final de Entrega | - | - | - | Aguardando implementação | NÃO EXECUTADO |
 
 ---
@@ -173,6 +173,30 @@ Execução realizada em **2026-11-15** via `gradle :app:assembleDebug :app:testD
 | **E05-UI-05** | `ConverterScreen` calcula `USD -> BRL`, inverte para `BRL -> USD` e exibe aviso quando falta cotação local | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
 | **E05-UI-06** | `QuotesHeaderCard` exibe textos, badge e botão com cores sólidas e contraste WCAG >= 4.5:1 / 7.0:1 nos temas claro e escuro | Compose UI + Contraste (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Adicionado na correção visual E05 |
 | **E05-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) | Instrumentado (`androidTest`) | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de execução sem emulador Android ou ADB disponível |
+
+---
+
+## 8. Execução da Etapa E06 — Offline First, Sincronização Automática e WorkManager
+
+Execução realizada em **2026-11-16** via `gradle :app:testDebugUnitTest :app:assembleDebug` (JUnit 4 + Coroutines Test + Room + OkHttp `MockWebServer` + WorkManager `2.10.1` + `KoinWorkerFactory` + Robolectric SDK 36). Todos os **14 novos testes da E06** passaram, elevando o total da suíte para **92 testes aprovados em 24 suítes** (14 E06 + 3 `AwesomeApiAuthInterceptorTest` + 22 E05 + 21 E04 + 18 E03 + 12 E02 + 2 E01), com **0 falhas**, **0 erros** e **0 ignorados**.
+
+| ID | Descrição | Tipo de Teste | Arquivo de Teste | Resultado | Observações |
+|---|---|---|---|---|---|
+| **E06-UT-01** | `AwesomeApiRemoteDataSource` extrai `Retry-After` em segundos inteiros e HTTP-date (compatível com API 24) no HTTP 429 | Integração HTTP (`MockWebServer` + Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/remote/AwesomeApiRemoteDataSourceTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-02** | `RefreshQuotesUseCase` agenda retry em falhas temporárias/rate limit (repassando `retryAfterSeconds`) e cancela retry pendente em sucesso | Unitário (JUnit + Coroutines) | `app/src/test/java/com/aistudio/dolarap/domain/usecase/DomainUseCasesTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-03** | `SyncQuotesWorker` delega a `QuoteRepository.refreshQuotes()`, retorna `Result.success` com timestamp e cancela retry no periódico | Unitário / Robolectric | `app/src/test/java/com/aistudio/dolarap/data/worker/SyncQuotesWorkerTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-04** | `SyncQuotesWorker` retorna `Result.retry()` em `NoConnection`, `Timeout` e HTTP 5xx até `MAX_RETRY_ATTEMPTS = 3`, falhando ao esgotar tentativas | Unitário / Robolectric | `app/src/test/java/com/aistudio/dolarap/data/worker/SyncQuotesWorkerTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-05** | `SyncQuotesWorker` falha imediatamente sem retry infinito em erros permanentes (HTTP 4xx, `UnsupportedPair`, `InvalidApiResponse`) | Unitário / Robolectric | `app/src/test/java/com/aistudio/dolarap/data/worker/SyncQuotesWorkerTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-06** | `SyncQuotesWorker` trata HTTP 429 com `Retry-After` agendando retry atrasado e retorna `Result.retry()` limitado quando o cabeçalho está ausente | Unitário / Robolectric | `app/src/test/java/com/aistudio/dolarap/data/worker/SyncQuotesWorkerTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-07** | `SyncQuotesWorker` trata lock transitório de SQLite (`SQLiteDatabaseLockedException`) com retry limitado e erro estrutural SQLite com `Result.failure()` | Unitário / Robolectric | `app/src/test/java/com/aistudio/dolarap/data/worker/SyncQuotesWorkerTest.kt` | APROVADO | Sem falhas |
+| **E06-UT-08** | `QuotesViewModel` consolida sem contradições todos os 7 estados de sincronização (aguardando 1ª sync, sincronizando foreground/worker, concluído, offline, falha, local e `STALE` > 15 min) | Unitário (JUnit + Fake + Coroutines) | `app/src/test/java/com/aistudio/dolarap/presentation/quotes/QuotesViewModelTest.kt` | APROVADO | Sem falhas |
+| **E06-IT-01** | `WorkManagerSyncScheduler` agenda trabalho periódico único de 6h (`KEEP`, `NetworkType.CONNECTED`) sem duplicação | Integração WorkManager (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/worker/WorkManagerSyncSchedulerTest.kt` | APROVADO | Sem falhas |
+| **E06-IT-02** | `WorkManagerSyncScheduler` agenda retry único `OneTimeWork` (`KEEP`, `REPLACE` com `initialDelay` de `Retry-After`, `NetworkType.CONNECTED`) e realiza cancelamento | Integração WorkManager (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/worker/WorkManagerSyncSchedulerTest.kt` | APROVADO | Sem falhas |
+| **E06-IT-03** | `WorkManagerSyncScheduler` mapeia corretamente `IDLE`, `ENQUEUED`, `RUNNING`, `BLOCKED`, `SUCCEEDED` e `FAILED` sem mascarar erros/conclusões do retry | Integração WorkManager (Robolectric) | `app/src/test/java/com/aistudio/dolarap/data/worker/WorkManagerSyncSchedulerTest.kt` | APROVADO | Sem falhas |
+| **E06-IT-04** | Koin resolve `SyncScheduler` e `KoinWorkerFactory` instancia `SyncQuotesWorker` corretamente no grafo de DI | Integração DI + WorkManager (Robolectric) | `app/src/test/java/com/aistudio/dolarap/di/KoinPresentationModuleTest.kt` | APROVADO | Sem falhas |
+| **E06-IT-05** | Fluxo Offline First ponta a ponta: abertura offline via Room, sync do `SyncQuotesWorker` contra `MockWebServer` atualizando a UI via `Flow`, preservação de cache em falha e sinalização `STALE` > 15 min | Integração Ponta a Ponta (Room + `MockWebServer` + Worker + `QuotesViewModel`) | `app/src/test/java/com/aistudio/dolarap/data/worker/OfflineFirstAndSyncFlowIntegrationTest.kt` | APROVADO | Sem falhas |
+| **E06-UI-01** | `QuotesScreen` exibe banners não destrutivos `quotes_offline_banner` e `quotes_sync_error_banner` mantendo visíveis os cards locais do Room | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
+| **E06-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) e testes manuais `MT-01`–`MT-11` em emulador | Instrumentado (`androidTest`) / Manual | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de container sem emulador Android interativo ou ADB acessível |
 
 
 

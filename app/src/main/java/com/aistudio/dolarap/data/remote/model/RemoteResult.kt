@@ -20,6 +20,7 @@ sealed interface RemoteError {
     val httpCode: Int,
     val apiCode: String? = null,
     val apiMessage: String? = null,
+    val retryAfterSeconds: Long? = null,
   ) : RemoteError
 
   data class ServerError(

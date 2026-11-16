@@ -1,7 +1,7 @@
 # DOLARAP
 
-> **Estado atual do projeto:** **Etapa E05 concluída (interface Jetpack Compose, Material 3, Navigation Compose, `QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`, `PresentationModule`, formatador brasileiro e 22 novos testes) e aguardando revisão externa.**
-> A sincronização automática em segundo plano com WorkManager (`E06`) permanece **planejada**.
+> **Estado atual do projeto:** **Etapa E06 concluída (Offline First completo, `SyncScheduler`, `SyncQuotesWorker`, `WorkManagerSyncScheduler`, agendamento único de 6h, retry `CONNECTED` com suporte a HTTP 429/`Retry-After`, estado unificado de sincronização na UI e 14 novos testes — 92/92 aprovados) e aguardando revisão externa.**
+> A consolidação final de entrega (`E07`) permanece **pendente**.
 
 Aplicativo Android nativo para consulta e conversão de cotações de moedas estrangeiras em relação ao Real brasileiro (**BRL**), projetado com foco em **Offline First**, precisão monetária (`BigDecimal`) e arquitetura limpa em módulo único (`:app`).
 
@@ -17,42 +17,43 @@ Aplicativo Android nativo para consulta e conversão de cotações de moedas est
 | **E03** | Integração com a AwesomeAPI (Retrofit/OkHttp/Moshi, `/json/last/{pairs}`, `/json/available` + fallback `/xml/available`, tratamento de erros e `CoinNotExists`) | **Aprovada** |
 | **E04** | Camada de domínio e repositórios (modelos puros, `BigDecimal`, UseCases, regra de 15 min, SSOT Room, `dataModule`/`domainModule`) | **Aprovada** |
 | **E05** | Interface Jetpack Compose (Cotações, Pesquisa/Adição, Conversor, Filtro de Favoritos, Navigation Compose, `PresentationModule`) | **Implementação e testes concluídos — aguardando revisão externa** |
-| **E06** | Offline First, sincronização com WorkManager (6h e retry `CONNECTED`) e validação completa | Pendente |
+| **E06** | Offline First, sincronização com WorkManager (`SyncQuotesWorker`, periódico 6h, retry `CONNECTED`, `Retry-After` e estados unificados) | **Implementação e testes concluídos — aguardando revisão externa** |
 | **E07** | Entrega final, documentação consolidada, APK e versionamento | Pendente |
 
 ---
 
 ## Funcionalidades Implementadas vs. Planejadas
 
-### Já implementado (até a Etapa E05)
+### Já implementado (até a Etapa E06)
 - **Estrutura base Android (`E01`):** Módulo único `:app` com `namespace` e `applicationId` configurados para `com.aistudio.dolarap`, permissões `INTERNET` e `ACCESS_NETWORK_STATE`, ícone adaptativo customizado e `MainActivity` com `enableEdgeToEdge()` e `DolarapTheme`.
-- **Inicialização de DI com Koin (`E01`–`E05`):** `DolarapApplication` inicializando Koin de forma segura (`appModules`), reunindo `databaseModule` (Room + DAOs), `networkModule` (Retrofit/OkHttp/Moshi/AwesomeAPI), `dataModule` (mappers, `TimeProvider` e repositórios SSOT), `domainModule` (`CurrencyConverter`, `QuoteFreshnessEvaluator` e os 9 UseCases) e `presentationModule` (`QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`).
+- **Inicialização de DI com Koin e WorkManager (`E01`–`E06`):** `DolarapApplication` inicializando Koin (`appModules`), implementando `Configuration.Provider` com `KoinWorkerFactory` (com `WorkManagerInitializer` padrão removido no `AndroidManifest.xml`) e agendando o trabalho periódico único de 6 horas na inicialização. Reúne `databaseModule` (Room + DAOs), `networkModule` (Retrofit/OkHttp/Moshi/AwesomeAPI com `AwesomeApiAuthInterceptor`), `dataModule` (mappers, `TimeProvider`, repositórios SSOT, `SyncScheduler` e `SyncQuotesWorker`), `domainModule` (`CurrencyConverter`, `QuoteFreshnessEvaluator` e os 9 UseCases) e `presentationModule` (`QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`).
 - **Persistência local com Room (`E02`):**
   - **4 entidades Room:** `SelectedCurrencyEntity` (`selected_currencies`), `QuoteEntity` (`quotes`), `AvailablePairEntity` (`available_pairs`) e `SyncMetadataEntity` (`sync_metadata`).
   - **Relação Room:** `SelectedCurrencyWithQuote` (`@Embedded` + `@Relation`) unindo cada moeda selecionada à sua cotação opcional (`0..1`).
   - **4 DAOs com consultas reativas via `Flow`:** `CurrencyDao`, `QuoteDao`, `AvailablePairDao` e `SyncMetadataDao`.
   - **Seed inicial e catálogo complementar (`E02`):** `DolarapDatabase` semeia de forma atômica e idempotente as **10 moedas padrão** (`USD`, `EUR`, `GBP`, `CAD`, `AUD`, `CHF`, `JPY`, `ARS`, `CNY`, `MXN`); `ComplementaryCurrencyCatalog` enriquece nomes amigáveis em PT-BR e normalização de busca.
-- **Integração remota com a AwesomeAPI (`E03`):**
-  - **Configuração HTTP centralizada (`AwesomeApiConfig`, `NetworkModule`):** Retrofit + OkHttpClient (timeouts de 15s e `HttpLoggingInterceptor` nível `BASIC` em debug) + Moshi (`KotlinJsonAdapterFactory` e codegen KSP).
+- **Integração remota com a AwesomeAPI (`E03` + API Key):**
+  - **Configuração HTTP centralizada (`AwesomeApiConfig`, `NetworkModule`):** Retrofit + OkHttpClient (timeouts de 15s, `AwesomeApiAuthInterceptor` enviando `x-api-key` via `BuildConfig.AWESOME_API_KEY` quando configurada e `HttpLoggingInterceptor` com ocultação do cabeçalho sensível) + Moshi (`KotlinJsonAdapterFactory` e codegen KSP).
   - **Consulta de cotações (`AwesomeApiService.getLastQuotes`, `QuoteRemoteMapper`):** Consome `/json/last/{pairs}` para múltiplos pares válidos no padrão `^[A-Z]{3}-BRL$`, preservando decimais exatos como string em `QuoteEntity`.
   - **Catálogo oficial com tentativa experimental JSON (`AvailableCatalogParser`, `AwesomeApiRemoteDataSource`):** `/xml/available` é a fonte oficialmente documentada; `/json/available` atua apenas como tentativa experimental com fallback XML (bloqueando segunda chamada em HTTP 429, 5xx, timeout ou offline).
-  - **Tratamento defensivo de erros (`RemoteResult`, `RemoteError`, `ApiErrorDto`):** Trata desconexão, timeout, HTTP 404 (`CoinNotExists` em consulta simples ou em lote), 429, 5xx e payloads malformados sem derrubar o app nem apagar dados locais.
+  - **Tratamento defensivo de erros (`RemoteResult`, `RemoteError`, `ApiErrorDto`):** Trata desconexão, timeout, HTTP 404 (`CoinNotExists` em consulta simples ou em lote), HTTP 429 (incluindo extração do cabeçalho `Retry-After` em segundos ou HTTP-date), 5xx e payloads malformados sem derrubar o app nem apagar dados locais.
 - **Camada de Domínio pura e Repositórios SSOT (`E04`):**
-  - **Camada `domain` pura (sem imports Android/Room/Retrofit/Moshi/Compose):** Modelos (`CurrencyQuote`, `QuoteRate`, `DashboardQuotesSnapshot`, `SyncStatus`, `QuoteFreshnessStatus`, `AvailableCurrency`, `ConversionResult`, `CurrencyDefaults`, `DomainResult`/`DomainError`), contratos (`QuoteRepository`, `CatalogRepository`, `TimeProvider`), serviços (`CurrencyConverter` em `BigDecimal`, `QuoteFreshnessEvaluator` com regra de 15 minutos) e 9 UseCases (`ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase`, `ObserveAvailableCurrenciesUseCase`, `SearchAvailableCurrenciesUseCase`, `RefreshCatalogUseCase`, `AddCurrencyUseCase`, `RemoveCurrencyUseCase`, `ToggleFavoriteUseCase`, `ConvertCurrencyUseCase`).
+  - **Camada `domain` pura (sem imports Android/Room/Retrofit/Moshi/Compose):** Modelos (`CurrencyQuote`, `QuoteRate`, `DashboardQuotesSnapshot`, `SyncStatus`, `QuoteFreshnessStatus`, `AvailableCurrency`, `ConversionResult`, `CurrencyDefaults`, `DomainResult`/`DomainError`), contratos (`QuoteRepository`, `CatalogRepository`, `TimeProvider`, `SyncScheduler`/`BackgroundSyncInfo`/`BackgroundSyncState`), serviços (`CurrencyConverter` em `BigDecimal`, `QuoteFreshnessEvaluator` com regra de 15 minutos) e 9 UseCases (`ObserveDashboardQuotesUseCase`, `RefreshQuotesUseCase`, `ObserveAvailableCurrenciesUseCase`, `SearchAvailableCurrenciesUseCase`, `RefreshCatalogUseCase`, `AddCurrencyUseCase`, `RemoveCurrencyUseCase`, `ToggleFavoriteUseCase`, `ConvertCurrencyUseCase`).
   - **Conversor monetário em `BigDecimal`:** Suporta `X -> BRL`, `BRL -> Y`, `X -> Y` (triangulada via BRL) e `X -> X` utilizando exclusivamente `bid` como taxa padrão (`ask` mantido como dado complementar), intermediários em `MathContext.DECIMAL128`, escala da moeda de destino via ISO 4217 (ex.: `JPY` 0 casas, `BRL`/`USD`/`EUR` 2 casas, `BTC`/`ETH`/`LTC` 8 casas) e `RoundingMode.HALF_UP`.
   - **Regra de 15 minutos (`QuoteFreshnessEvaluator`):** Trata ausência de timestamp como `UNAVAILABLE`, até `900_000 ms` como `FRESH`, acima de 15 minutos como `STALE` e timestamps inválidos/futuros defensivamente como `STALE`.
   - **Repositórios SSOT (`QuoteRepositoryImpl`, `CatalogRepositoryImpl`):** Conectam a AwesomeAPI ao Room usando o Room como Fonte Única da Verdade via `Flow`, deduplicam sincronizações concorrentes (`Mutex` + `CompletableDeferred`), particionam lotes de cotações (`MAX_BATCH_SIZE = 25`), protegem as 10 moedas padrão e preservam o cache local intacto em falhas de rede/API.
-- **Testes automatizados (`E01`–`E05`):** 75 testes unitários, de integração local e Compose UI via JUnit 4 + `MockWebServer` + Robolectric aprovados em `gradle :app:testDebugUnitTest`.
 - **Interface com Jetpack Compose, Material 3 e Navigation Compose (`E05`):**
   - **Identidade visual e formatação (`presentation/theme`, `presentation/format`, `presentation/components`):** Paleta Material 3 esmeralda/dourado (`Color.kt`/`Theme.kt`), tipografia local embarcada (`Plus Jakarta Sans` e `JetBrains Mono` com algarismos tabulares `tnum` em `Type.kt`), `BrazilianFormatter` (formatação `pt-BR` direto de `BigDecimal`, sem conversão para `Double`/`Float`), `DomainErrorMapper` + `UiText` e componentes reutilizáveis (`FreshnessBadge`, `VariationPill`, `StatusBannerCard`, `LoadingStateView`, `EmptyStateView`, `ErrorStateView`).
   - **Navegação (`DolarapNavGraph.kt`):** `DolarapApp` e `DolarapNavHost` com `NavigationBar` em telas compactas e `NavigationRail` em telas `>= 600dp`, preservação de estado entre abas (`saveState`/`restoreState`) e prevenção de duplicação de destinos na backstack (`navigateSingleTopTo`).
-  - **Tela de Cotações (`QuotesScreen` + `QuotesViewModel`):** Exibe as 10 moedas padrão + adicionais selecionadas com `bid`, `ask` complementar, variação (`pctChange`/`varBid`), data/hora da última sincronização, badges `Atualizada`/`Desatualizada (> 15 min)`/`Sem cotação`, filtro `Todas` | `Favoritas`, favoritar, remoção exclusiva para moedas não padrão, pull-to-refresh/botão manual, atalhos para Pesquisa e Conversor e estados `Loading`, `Success`, `Empty` e `Error`.
-  - **Tela de Pesquisa e Adição (`CurrencySearchScreen` + `CurrencySearchViewModel`):** Busca em tempo real (case/accent-insensitive via `SearchAvailableCurrenciesUseCase`), listagem do catálogo validado com status (`Padrão (protegida)` / `Selecionada` / `Disponível`), adição e remoção com proteção contra duplicidade/requisições concorrentes e atualização manual do catálogo.
-  - **Tela de Conversor (`ConverterScreen` + `ConverterViewModel`):** Seletor com `BRL`, as 10 moedas padrão e adicionais, entrada numérica validada, botão de inversão rápida (`swapCurrencies`), cálculo 100% delegado ao `ConvertCurrencyUseCase` (`BigDecimal`/`bid`), detalhamento de taxa efetiva (`bid`/`ask`/cruzada), timestamp da cotação, aviso de dados desatualizados (> 15 min) e tratamento amigável para cotação indisponível ou entrada inválida.
+  - **Telas MVVM (`QuotesScreen`, `CurrencySearchScreen`, `ConverterScreen`):** Exibição imediata das 10 moedas padrão + adicionais via Room `Flow`, `bid`/`ask`, variação, favoritos, pesquisa em tempo real, conversor em `BigDecimal`, banners não destrutivos de desatualização (> 15 min) e estados explícitos `Loading`, `Success`, `Empty` e `Error`.
+- **Sincronização em Segundo Plano e Offline First Completo (`E06`):**
+  - **Contrato puro `SyncScheduler` + `WorkManagerSyncScheduler`:** Agenda trabalho periódico único de 6 horas (`dolarap_periodic_quotes_sync`, `ExistingPeriodicWorkPolicy.KEEP`, `NetworkType.CONNECTED`, `BackoffPolicy.EXPONENTIAL`) na inicialização e trabalho único de retry condicionado à rede (`dolarap_connectivity_retry_quotes_sync`, `ExistingWorkPolicy.KEEP` ou `REPLACE` com `initialDelay` quando há `Retry-After`) após falhas transitórias ou rate limit, expondo `Flow<BackgroundSyncInfo>`.
+  - **`SyncQuotesWorker`:** Executa `QuoteRepository.refreshQuotes()` sem duplicar lógica HTTP/Room; aplica retry limitado (`MAX_RETRY_ATTEMPTS = 3`) para falhas temporárias (`NoConnection`, `Timeout`, 5xx, lock transitório de SQLite), respeita `Retry-After` no HTTP 429 agendando retry atrasado, falha imediatamente em erros permanentes sem loop infinito e preserva integralmente os dados e timestamps do Room em qualquer falha.
+  - **Estado unificado na UI (`QuotesViewModel` + `QuotesUiState.syncPhase` + `QuotesScreen`):** Distingue sem contradições aguardando primeira sincronização, sincronizando (foreground ou worker em execução), concluído, offline, falha de sincronização, dados locais disponíveis e dados desatualizados (> 15 min), exibindo banners não destrutivos sem esconder cotações locais.
+- **Testes automatizados (`E01`–`E06`):** **92 testes** em 24 suítes (unitários, integração local Room/MockWebServer/WorkManager, DI Koin e Compose UI) aprovados em `gradle :app:testDebugUnitTest`.
 
 ### Planejado para etapas futuras (ainda NÃO implementado)
-- **Sincronização em Segundo Plano (`E06`):** `SyncQuotesWorker` e `WorkManagerSyncScheduler` (`SyncScheduler` com trabalho periódico de 6 horas e retry condicionado a `NetworkType.CONNECTED` sem duplicação).
-- **Entrega Final (`E07`):** Consolidação final de evidências em dispositivo real, revisão final de entrega e versionamento.
+- **Entrega Final (`E07`):** Consolidação final de evidências em dispositivo/emulador real e checklist final de versionamento.
 
 ---
 
@@ -60,23 +61,22 @@ Aplicativo Android nativo para consulta e conversão de cotações de moedas est
 
 ### Arquitetura Atual e Planejada
 O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.aistudio.dolarap`), dividido em quatro pacotes principais:
-- `presentation`: implementada na E05 com tema Material 3 (`DolarapTheme` + fontes locais `Plus Jakarta Sans` e `JetBrains Mono`), `BrazilianFormatter`, `DomainErrorMapper`, componentes compartilhados, `DolarapNavGraph` e as três telas MVVM (`Quotes`, `CurrencySearch`, `Converter`) consumindo exclusivamente os UseCases da E04 (sem acesso direto a Room, DAOs ou Retrofit).
-- `domain`: implementado na E04 como camada Kotlin/JDK pura (modelos, erros tipados, contratos `QuoteRepository`/`CatalogRepository`, `CurrencyConverter`, `QuoteFreshnessEvaluator`, `TimeProvider` e 9 UseCases — zero dependências de Android/Room/Retrofit/Moshi/Compose).
-- `data`: contém `data.local` (E02: `DolarapDatabase`, entidades, DAOs e `ComplementaryCurrencyCatalog`), `data.remote` (E03: `AwesomeApiConfig`, `AwesomeApiService`, `AwesomeApiRemoteDataSource`, DTOs Moshi, `QuoteRemoteMapper`, `AvailableCatalogParser` e `RemoteResult`), `data.mapper` (`QuoteEntityMapper`, `RemoteErrorMapper`), `data.time` (`SystemTimeProvider`) e `data.repository` (E04: `QuoteRepositoryImpl`, `CatalogRepositoryImpl`); receberá `data.worker` na E06.
-- `di`: contém `AppModule.kt`, `DatabaseModule.kt` (E02), `NetworkModule.kt` (E03), `DataModule.kt` (E04), `DomainModule.kt` (E04) e `PresentationModule.kt` (E05) ativos; receberá `SyncScheduler`/Worker na E06.
+- `presentation`: implementada na E05 e integrada na E06 com tema Material 3 (`DolarapTheme` + fontes locais `Plus Jakarta Sans` e `JetBrains Mono`), `BrazilianFormatter`, `DomainErrorMapper`, componentes compartilhados, `DolarapNavGraph` e as três telas MVVM (`Quotes`, `CurrencySearch`, `Converter`) consumindo exclusivamente os UseCases da E04 e `SyncScheduler` (sem acesso direto a Room, DAOs ou Retrofit).
+- `domain`: implementado na E04 e estendido na E06 como camada Kotlin/JDK pura (modelos, erros tipados, contratos `QuoteRepository`/`CatalogRepository`/`SyncScheduler`, `CurrencyConverter`, `QuoteFreshnessEvaluator`, `TimeProvider` e 9 UseCases — zero dependências de Android/Room/Retrofit/Moshi/Compose/WorkManager).
+- `data`: contém `data.local` (E02: `DolarapDatabase`, entidades, DAOs e `ComplementaryCurrencyCatalog`), `data.remote` (E03: `AwesomeApiConfig`, `AwesomeApiService`, `AwesomeApiRemoteDataSource`, `AwesomeApiAuthInterceptor`, DTOs Moshi, `QuoteRemoteMapper`, `AvailableCatalogParser` e `RemoteResult`), `data.mapper` (`QuoteEntityMapper`, `RemoteErrorMapper`), `data.time` (`SystemTimeProvider`), `data.repository` (E04: `QuoteRepositoryImpl`, `CatalogRepositoryImpl`) e `data.worker` (E06: `SyncQuotesWorker`, `WorkManagerSyncScheduler`).
+- `di`: contém `AppModule.kt`, `DatabaseModule.kt` (E02), `NetworkModule.kt` (E03), `DataModule.kt` (E04 + E06), `DomainModule.kt` (E04 + E06) e `PresentationModule.kt` (E05 + E06).
 
 ### Stack Tecnológica Configurada no Gradle
 - **Linguagem / Build:** Kotlin `2.2.10`, Android Gradle Plugin `9.1.1`, KSP `2.3.5`, `compileSdk 36`, `minSdk 24`, `targetSdk 36`.
-- **Ativamente utilizados até a E05:**
+- **Ativamente utilizados até a E06:**
   - **Jetpack Compose + Material 3** (BOM `2024.09.00`) + **Material Icons Extended** + **Navigation Compose** (`2.8.9`)
   - **Koin** (BOM `4.1.1`: `koin-core`, `koin-android`, `koin-androidx-compose`, `koin-androidx-workmanager`)
+  - **WorkManager** (`2.10.1`: `work-runtime-ktx`)
   - **Room** (`2.7.0`: `room-runtime`, `room-ktx`, `room-compiler` via KSP)
   - **Retrofit `2.12.0` + OkHttp `4.10.0` (`logging-interceptor`) + Moshi `1.15.2` (`moshi-kotlin`, `converter-moshi`, `moshi-kotlin-codegen` via KSP)**
   - **Kotlin Coroutines & Flow** (`1.10.2`)
   - **Cálculos monetários:** `java.math.BigDecimal` + `java.math.MathContext.DECIMAL128` (`HALF_UP`)
   - **Testes:** JUnit `4.13.2`, Kotlinx Coroutines Test `1.10.2`, OkHttp MockWebServer `4.10.0`, Robolectric `4.16.1`, Compose UI Test (`ui-test-junit4`)
-- **Declarados no Gradle para a próxima etapa (ainda sem implementação funcional):**
-  - **WorkManager** (`2.10.1`: `work-runtime-ktx`) — E06
 
 ---
 
@@ -91,32 +91,33 @@ O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.ais
 ├── README.md                             # Visão geral e estado real do projeto
 └── app/src/
     ├── main/java/com/aistudio/dolarap/
-    │   ├── DolarapApplication.kt         # Inicialização do Koin
+    │   ├── DolarapApplication.kt         # Inicialização do Koin, Configuration.Provider (KoinWorkerFactory) e agendamento 6h (E06)
     │   ├── MainActivity.kt               # Entry point Compose com enableEdgeToEdge + DolarapApp
     │   ├── di/
     │   │   ├── AppModule.kt              # Lista de módulos Koin ativos (database, network, data, domain, presentation)
     │   │   ├── DatabaseModule.kt         # (E02) Provisão singleton de DolarapDatabase e DAOs
-    │   │   ├── NetworkModule.kt          # (E03) Moshi, OkHttpClient, Retrofit, Service e RemoteDataSource
-    │   │   ├── DataModule.kt             # (E04) TimeProvider, Mappers e Repositories SSOT
-    │   │   ├── DomainModule.kt           # (E04) CurrencyConverter, QuoteFreshnessEvaluator e 9 UseCases
-    │   │   └── PresentationModule.kt     # (E05) ViewModels (Quotes, CurrencySearch, Converter)
-    │   ├── domain/                       # (E04) Camada Kotlin/JDK pura
-    │   │   ├── model/                    # CurrencyModels, AvailableCurrency, ConversionResult, DomainResult
+    │   │   ├── NetworkModule.kt          # (E03 + Auth) Moshi, OkHttpClient, AwesomeApiAuthInterceptor, Retrofit e RemoteDataSource
+    │   │   ├── DataModule.kt             # (E04 + E06) TimeProvider, Mappers, Repositories SSOT, SyncScheduler e SyncQuotesWorker
+    │   │   ├── DomainModule.kt           # (E04 + E06) CurrencyConverter, QuoteFreshnessEvaluator e 9 UseCases
+    │   │   └── PresentationModule.kt     # (E05 + E06) ViewModels (Quotes, CurrencySearch, Converter)
+    │   ├── domain/                       # (E04 + E06) Camada Kotlin/JDK pura
+    │   │   ├── model/                    # CurrencyModels, AvailableCurrency, ConversionResult, DomainResult (inclui retryAfterSeconds)
     │   │   ├── repository/               # QuoteRepository, CatalogRepository
-    │   │   ├── service/                  # CurrencyConverter, QuoteFreshnessEvaluator, TimeProvider
+    │   │   ├── service/                  # CurrencyConverter, QuoteFreshnessEvaluator, TimeProvider, SyncScheduler (E06)
     │   │   └── usecase/                  # 9 UseCases (cotações, catálogo, busca, adição, remoção, favorito, conversão)
     │   ├── data/
     │   │   ├── local/                    # (E02) DolarapDatabase, entidades, DAOs e ComplementaryCurrencyCatalog
-    │   │   ├── mapper/                   # (E04) QuoteEntityMapper, RemoteErrorMapper
-    │   │   ├── remote/                   # (E03) AwesomeApiConfig, Service, RemoteDataSource, DTOs, Mapper e Parser
+    │   │   ├── mapper/                   # (E04 + E06) QuoteEntityMapper, RemoteErrorMapper
+    │   │   ├── remote/                   # (E03 + Auth) AwesomeApiConfig, Service, RemoteDataSource, AuthInterceptor, DTOs, Mapper e Parser
     │   │   ├── repository/               # (E04) QuoteRepositoryImpl, CatalogRepositoryImpl (SSOT Room)
-    │   │   └── time/                     # (E04) SystemTimeProvider
-    │   └── presentation/                 # (E05) Interface Jetpack Compose + MVVM
+    │   │   ├── time/                     # (E04) SystemTimeProvider
+    │   │   └── worker/                   # (E06) SyncQuotesWorker, WorkManagerSyncScheduler
+    │   └── presentation/                 # (E05 + E06) Interface Jetpack Compose + MVVM
     │       ├── theme/                    # Color.kt, Theme.kt, Type.kt (fontes locais Plus Jakarta Sans & JetBrains Mono)
     │       ├── format/                   # BrazilianFormatter.kt, DomainErrorMessageMapper.kt
     │       ├── components/               # DolarapComponents.kt (badges, pills, banners, Loading/Empty/Error)
     │       ├── navigation/               # DolarapNavGraph.kt (DolarapApp, DolarapNavHost, BottomBar/Rail)
-    │       ├── quotes/                   # QuotesScreen.kt, QuotesUiState.kt, QuotesViewModel.kt
+    │       ├── quotes/                   # QuotesScreen.kt, QuotesUiState.kt (QuotesSyncPhase), QuotesViewModel.kt
     │       ├── search/                   # CurrencySearchScreen.kt, CurrencySearchUiState.kt, CurrencySearchViewModel.kt
     │       └── converter/                # ConverterScreen.kt, ConverterUiState.kt, ConverterViewModel.kt
     ├── test/java/com/aistudio/dolarap/
@@ -124,9 +125,10 @@ O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.ais
     │   ├── ExampleRobolectricTest.kt
     │   ├── data/
     │   │   ├── local/                    # ComplementaryCurrencyCatalogTest, DolarapDatabaseIntegrationTest, KoinDatabaseModuleTest
-    │   │   ├── remote/                   # QuoteRemoteMapperTest, AvailableCatalogParserTest, AwesomeApiRemoteDataSourceTest, KoinNetworkModuleTest
-    │   │   └── repository/               # QuoteAndCatalogRepositoryIntegrationTest
-    │   ├── di/                           # KoinDomainModuleTest, KoinPresentationModuleTest
+    │   │   ├── remote/                   # QuoteRemoteMapperTest, AvailableCatalogParserTest, AwesomeApiAuthInterceptorTest, AwesomeApiRemoteDataSourceTest, KoinNetworkModuleTest
+    │   │   ├── repository/               # QuoteAndCatalogRepositoryIntegrationTest
+    │   │   └── worker/                   # (E06) SyncQuotesWorkerTest, WorkManagerSyncSchedulerTest, OfflineFirstAndSyncFlowIntegrationTest
+    │   ├── di/                           # KoinDomainModuleTest, KoinPresentationModuleTest (inclui SyncScheduler + KoinWorkerFactory)
     │   ├── domain/
     │   │   ├── service/                  # CurrencyConverterTest, QuoteFreshnessEvaluatorTest
     │   │   └── usecase/                  # DomainUseCasesTest
@@ -159,12 +161,12 @@ O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.ais
    ```sh
    gradle :app:assembleDebug
    ```
-   *(O APK atual já exibe as três telas reais em Jetpack Compose — Cotações, Pesquisa/Adição e Conversor — com atualização manual sob demanda; a sincronização automática em background será adicionada na Etapa E06.)*
-3. **Executar os testes unitários, de integração local e de UI Compose (Domínio/Room/AwesomeAPI/Repositórios/ViewModels/Navigation/Koin via JUnit + Robolectric + MockWebServer):**
+   *(O APK atual já exibe as três telas reais em Jetpack Compose — Cotações, Pesquisa/Adição e Conversor — além da sincronização automática periódica a cada 6 horas e retry condicionado à conectividade via WorkManager.)*
+3. **Executar os testes unitários, de integração local e de UI Compose (Domínio/Room/AwesomeAPI/Repositórios/WorkManager/ViewModels/Navigation/Koin via JUnit + Robolectric + MockWebServer):**
    ```sh
    gradle :app:testDebugUnitTest
    ```
-4. **Credenciais:** Não requer chaves pagas, login ou arquivo `google-services.json` para compilação e execução.
+4. **Credenciais:** A chave da AwesomeAPI (`AWESOME_API_KEY`) é injetada em tempo de build via Secrets Gradle Plugin em `BuildConfig.AWESOME_API_KEY` e enviada pelo `AwesomeApiAuthInterceptor` sem exposição em logs nem exigência de login do usuário.
 
 ---
 
@@ -176,39 +178,45 @@ Os resultados detalhados estão registrados em [`TEST_RESULTS.md`](TEST_RESULTS.
   - `ComplementaryCurrencyCatalogTest` (4 testes unitários JUnit)
   - `DolarapDatabaseIntegrationTest` (7 testes de integração Room via Robolectric)
   - `KoinDatabaseModuleTest` (1 teste de integração DI + Room via Robolectric)
-- **Etapa E03 (18 testes):**
+- **Etapa E03 + API Key (21 testes):**
   - `QuoteRemoteMapperTest` (3 testes unitários JUnit)
   - `AvailableCatalogParserTest` (4 testes unitários JUnit)
-  - `AwesomeApiRemoteDataSourceTest` (10 testes de integração HTTP + Room via `MockWebServer` + Robolectric)
-  - `KoinNetworkModuleTest` (1 teste de integração DI via Robolectric)
+  - `AwesomeApiAuthInterceptorTest` (3 testes unitários/MockWebServer garantindo envio e mascaramento de `x-api-key`)
+  - `AwesomeApiRemoteDataSourceTest` (11 testes de integração HTTP + Room via `MockWebServer` + Robolectric, incluindo `Retry-After`)
+  - `KoinNetworkModuleTest` (1 teste de integração DI via Robolectric — contabilizado junto à suíte de rede)
+  *(Nota: 18 testes da E03 original + 3 testes de `AwesomeApiAuthInterceptorTest` + 1 teste de `Retry-After` adicionado na E06 = 22 testes na suíte `data.remote`.)*
 - **Etapa E04 (21 testes):**
-  - `CurrencyConverterTest` (7 testes unitários JUnit): conversões `X -> BRL`, `BRL -> Y`, `X -> Y` (via BRL) com `bid` em `BigDecimal`, mesma moeda, zero, vírgula decimal, escalas por moeda de destino (`JPY` = 0, `BTC` = 8), rejeição de entrada inválida/negativa e rejeição de cotação ausente/`bid <= 0`.
-  - `QuoteFreshnessEvaluatorTest` (4 testes unitários JUnit): estados `UNAVAILABLE`, `FRESH` (até `900_000 ms`), `STALE` (> 15 min) e proteção defensiva para relógio inválido/futuro.
-  - `DomainUseCasesTest` (5 testes unitários JUnit com fakes): proteção das 10 moedas padrão, busca sem acentos/maiúsculas, adição validada com preservação se cotação inicial falhar, filtro de favoritos e conversão com sinalização de `isStale`.
-  - `QuoteAndCatalogRepositoryIntegrationTest` (4 testes de integração Room + `MockWebServer` + Robolectric): observação inicial das 10 moedas padrão via `Flow`, persistência API -> Room com preservação de cache em falha, coalescência de `refreshQuotes()` concorrentes (`requestCount == 1`), sync do catálogo, pesquisa, adição validada e persistência de favoritos.
-  - `KoinDomainModuleTest` (1 teste de integração DI via Robolectric): resolução completa do grafo Koin (`databaseModule`, `networkModule`, `dataModule`, `domainModule`) sem dependências circulares.
+  - `CurrencyConverterTest` (7 testes unitários JUnit)
+  - `QuoteFreshnessEvaluatorTest` (4 testes unitários JUnit)
+  - `DomainUseCasesTest` (5 testes da E04 + 1 teste E06 de integração `RefreshQuotesUseCase` + `SyncScheduler`)
+  - `QuoteAndCatalogRepositoryIntegrationTest` (4 testes de integração Room + `MockWebServer` + Robolectric)
+  - `KoinDomainModuleTest` (1 teste de integração DI via Robolectric)
 - **Etapa E05 (22 testes):**
-  - `BrazilianFormatterTest` (3 testes unitários JUnit): formatação `pt-BR` de taxas (`bid`/`ask`), quantias convertidas respeitando casas decimais do destino (`BRL`, `JPY`) e variações percentuais.
-  - `QuotesViewModelTest` (6 testes unitários com fakes e Coroutines Test): carga inicial das 10 moedas padrão, estado `Empty` no filtro `Favoritas`, estado `Error`, preservação de cache em falha manual com banner não destrutivo, alternância de favorito e proteção das 10 padrão na remoção.
-  - `CurrencySearchViewModelTest` (3 testes unitários com fakes e Coroutines Test): filtro sem acentos/maiúsculas, adição/duplicidade/proteção/remoção e estados `Empty`/`Error` para catálogo vazio.
-  - `ConverterViewModelTest` (3 testes unitários com fakes e Coroutines Test): inclusão de `BRL` + 10 padrão + adicionais, cálculo direto e cruzado via `ConvertCurrencyUseCase`, inversão (`swapCurrencies`), entrada vazia/inválida, cotação indisponível e sinalização `isStale`.
-  - `KoinPresentationModuleTest` (1 teste de integração DI via Robolectric): resolução dos três ViewModels (`QuotesViewModel`, `CurrencySearchViewModel`, `ConverterViewModel`) no grafo Koin.
-  - `DolarapUiAndNavigationTest` (6 testes Compose UI + Navigation Compose via Robolectric): fluxo entre as 3 telas sem duplicação na backstack, exibição de banner `STALE`/`bid`/`ask`/favoritos/`Empty`/`Loading`/`Error` em `QuotesScreen`, busca e adição em `CurrencySearchScreen`, cálculos/inversão/aviso em `ConverterScreen` e verificação de contraste/visibilidade do `QuotesHeaderCard` nos temas claro e escuro.
-- **Total executado na última bateria (`2026-11-15`):** **75 testes executados** em `:app:testDebugUnitTest` (75 aprovados, 0 falhas, 0 ignorados).
-- **Testes instrumentados (`androidTest`):** Não executados até o momento por ausência de emulador Android/ADB no ambiente de build.
+  - `BrazilianFormatterTest` (3 testes unitários JUnit)
+  - `QuotesViewModelTest` (6 testes E05 + 1 teste E06 cobrindo os 7 estados unificados de sync)
+  - `CurrencySearchViewModelTest` (3 testes unitários)
+  - `ConverterViewModelTest` (3 testes unitários)
+  - `KoinPresentationModuleTest` (1 teste E05 + 1 teste E06 validando `SyncScheduler` e `KoinWorkerFactory`)
+  - `DolarapUiAndNavigationTest` (6 testes E05 + 1 teste E06 validando banners não destrutivos offline/falha de sync)
+- **Etapa E06 (14 novos testes cobrindo Offline First e WorkManager):**
+  - `SyncQuotesWorkerTest` (5 testes via Robolectric): sucesso e cancelamento de retry periódico, falhas temporárias com limite `MAX_RETRY_ATTEMPTS = 3`, falhas permanentes sem loop, HTTP 429 com `Retry-After` vs sem header e exceções SQLite transitórias/fatais.
+  - `WorkManagerSyncSchedulerTest` (3 testes via Robolectric + WorkManager real): trabalho periódico único de 6h (`KEEP`, `NetworkType.CONNECTED`), retry único `OneTimeWork` (`KEEP`, `REPLACE` com `Retry-After`, `NetworkType.CONNECTED`) e mapeamento completo dos estados `IDLE`/`ENQUEUED`/`RUNNING`/`BLOCKED`/`SUCCEEDED`/`FAILED`.
+  - `OfflineFirstAndSyncFlowIntegrationTest` (1 teste ponta a ponta Room + `MockWebServer` + `SyncQuotesWorker` + `QuotesViewModel`): abertura offline imediata via Room, atualização reativa automática do `Flow` na UI quando o worker persiste novas cotações, preservação do cache em falha e aviso após > 15 minutos.
+  - Testes adicionais em `AwesomeApiRemoteDataSourceTest` (1 teste `Retry-After`), `DomainUseCasesTest` (1 teste `RefreshQuotesUseCase`), `KoinPresentationModuleTest` (1 teste `KoinWorkerFactory`), `QuotesViewModelTest` (1 teste dos 7 estados de sync) e `DolarapUiAndNavigationTest` (1 teste dos banners offline/erro sem ocultar cards do Room).
+- **Total executado na última bateria (`2026-11-16`):** **92 testes executados** em 24 suítes via `gradle :app:testDebugUnitTest` (92 aprovados, 0 falhas, 0 ignorados).
+- **Testes instrumentados (`androidTest`):** Não executados neste ambiente de container por ausência de emulador Android interativo/ADB acessível ao agente.
 
 ---
 
 ## Limitações Conhecidas
 
-- **Escopo atual (E05):** Ainda não existe sincronização automática em background via WorkManager (`SyncQuotesWorker`, agendamento periódico de 6h e retry condicionado a `NetworkType.CONNECTED`), que pertence à Etapa E06.
-- **WorkManager (planejado para E06):** Tarefas periódicas de 6 horas dependem das políticas de energia do Android (Doze/App Standby) e não garantem horário exato.
-- **AwesomeAPI:** Cache de 1 minuto para requisições não autenticadas e risco de bloqueio temporário de IP por erros HTTP 404 recorrentes (`CoinNotExists`), mitigado via validação local e bloqueio pontual de pares inválidos.
+- **WorkManager (`E06`):** Tarefas periódicas de 6 horas e retries condicionados à rede respeitam as políticas de economia de energia do Android (Doze Mode / App Standby Buckets) e não garantem execução no segundo exato.
+- **AwesomeAPI:** Recomenda-se respeitar cabeçalhos `Retry-After` em HTTP 429 e manter a validação local de pares `^[A-Z]{3}-BRL$` para evitar erros HTTP 404 recorrentes (`CoinNotExists`).
 - **Fora de escopo:** Sem login, integração bancária, pagamentos, compra/venda real, carteira, gráficos avançados, alertas/notificações ou backend próprio.
 
 ---
 
 ## Evidências e Entrega
 
-- **Status atual:** Aguardando revisão externa da **Etapa E05** para aprovação e liberação da **Etapa E06**.
-- **Evidências finais (APK definitivo, capturas de tela e consolidação final):** Serão adicionadas na **Etapa E07**.
+- **Status atual:** Aguardando revisão externa das etapas **E05** e **E06** para liberação da **Etapa E07**.
+- **Evidências finais (consolidação final de entrega e versionamento):** Serão concluídas na **Etapa E07**.

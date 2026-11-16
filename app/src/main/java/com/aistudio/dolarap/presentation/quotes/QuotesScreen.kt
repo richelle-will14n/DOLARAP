@@ -26,8 +26,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
@@ -155,6 +157,13 @@ fun QuotesScreen(
               modifier = Modifier.testTag("quotes_error_banner"),
             )
           }
+          if (uiState.bannerError == null && !uiState.isRefreshing) {
+            QuotesSyncPhaseBanner(
+              syncPhase = uiState.syncPhase,
+              isBackgroundRetryScheduled = uiState.isBackgroundRetryScheduled,
+              modifier = Modifier.padding(top = 10.dp),
+            )
+          }
           EmptyStateView(
             icon = if (uiState.favoritesOnly) Icons.Outlined.StarBorder else Icons.Filled.CurrencyExchange,
             title =
@@ -231,6 +240,20 @@ fun QuotesScreen(
             }
           }
 
+          if (
+            uiState.bannerError == null &&
+              !uiState.isRefreshing &&
+              (uiState.syncPhase == QuotesSyncPhase.OFFLINE ||
+                uiState.syncPhase == QuotesSyncPhase.FAILED)
+          ) {
+            item(span = { GridItemSpan(columns) }, key = "sync_phase_banner") {
+              QuotesSyncPhaseBanner(
+                syncPhase = uiState.syncPhase,
+                isBackgroundRetryScheduled = uiState.isBackgroundRetryScheduled,
+              )
+            }
+          }
+
           uiState.feedbackMessage?.let { feedback ->
             item(span = { GridItemSpan(columns) }, key = "feedback_banner") {
               FeedbackPillBanner(
@@ -259,6 +282,49 @@ fun QuotesScreen(
 }
 
 @Composable
+private fun QuotesSyncPhaseBanner(
+  syncPhase: QuotesSyncPhase,
+  isBackgroundRetryScheduled: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  when (syncPhase) {
+    QuotesSyncPhase.OFFLINE ->
+      StatusBannerCard(
+        title = stringResource(R.string.quotes_offline_banner_title),
+        message =
+          if (isBackgroundRetryScheduled) {
+            stringResource(R.string.quotes_offline_retry_scheduled_message)
+          } else {
+            stringResource(R.string.quotes_offline_banner_message)
+          },
+        icon = Icons.Filled.CloudOff,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.testTag("quotes_offline_banner"),
+      )
+
+    QuotesSyncPhase.FAILED ->
+      StatusBannerCard(
+        title = stringResource(R.string.quotes_sync_error_banner_title),
+        message =
+          if (isBackgroundRetryScheduled) {
+            stringResource(R.string.quotes_sync_error_retry_scheduled_message)
+          } else {
+            stringResource(R.string.quotes_sync_error_banner_message)
+          },
+        icon = Icons.Filled.ErrorOutline,
+        containerColor = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = modifier.testTag("quotes_sync_error_banner"),
+      )
+
+    QuotesSyncPhase.WAITING_FIRST_SYNC,
+    QuotesSyncPhase.SYNCING,
+    QuotesSyncPhase.COMPLETED -> Unit
+  }
+}
+
+@Composable
 private fun QuotesHeaderCard(
   syncStatus: SyncStatus,
   favoritesOnly: Boolean,
@@ -272,7 +338,11 @@ private fun QuotesHeaderCard(
   val syncSummaryText =
     syncStatus.lastSuccessfulSyncAtMillis?.let { timestamp ->
       stringResource(R.string.quotes_last_sync_format, BrazilianFormatter.formatDateTime(timestamp))
-    } ?: stringResource(R.string.quotes_never_synced)
+    } ?: if (isRefreshing) {
+      stringResource(R.string.quotes_syncing_label)
+    } else {
+      stringResource(R.string.quotes_never_synced)
+    }
 
   Column(
     modifier = Modifier.fillMaxWidth().widthIn(max = 900.dp),

@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.aistudio.dolarap.R
 import com.aistudio.dolarap.domain.model.DashboardQuotesSnapshot
 import com.aistudio.dolarap.domain.model.DomainResult
+import com.aistudio.dolarap.domain.service.BackgroundSyncInfo
+import com.aistudio.dolarap.domain.service.BackgroundSyncState
+import com.aistudio.dolarap.domain.service.SyncScheduler
 import com.aistudio.dolarap.domain.usecase.ObserveDashboardQuotesUseCase
 import com.aistudio.dolarap.domain.usecase.RefreshQuotesUseCase
 import com.aistudio.dolarap.domain.usecase.RemoveCurrencyUseCase
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,6 +32,7 @@ class QuotesViewModel(
   private val refreshQuotesUseCase: RefreshQuotesUseCase,
   private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
   private val removeCurrencyUseCase: RemoveCurrencyUseCase,
+  syncScheduler: SyncScheduler? = null,
   refreshOnStart: Boolean = true,
 ) : ViewModel() {
 
@@ -35,6 +40,15 @@ class QuotesViewModel(
   private val isRefreshing = MutableStateFlow(false)
   private val bannerError = MutableStateFlow<UiText?>(null)
   private val feedbackMessage = MutableStateFlow<UiText?>(null)
+
+  private val backgroundSyncFlow =
+    (syncScheduler?.observeSyncState() ?: flowOf(BackgroundSyncInfo()))
+      .catch { emit(BackgroundSyncInfo()) }
+
+  private val refreshStateStream =
+    combine(isRefreshing, backgroundSyncFlow) { foregroundRefreshing, backgroundSync ->
+      foregroundRefreshing to backgroundSync
+    }
 
   private sealed interface SnapshotStream {
     data object Loading : SnapshotStream
@@ -54,31 +68,51 @@ class QuotesViewModel(
     combine(
       snapshotStream,
       favoritesOnly,
-      isRefreshing,
+      refreshStateStream,
       bannerError,
       feedbackMessage,
-    ) { stream, onlyFavorites, refreshing, errorText, feedback ->
+    ) { stream, onlyFavorites, (foregroundRefreshing, backgroundSync), errorText, feedback ->
+      val effectiveRefreshing =
+        foregroundRefreshing || backgroundSync.state == BackgroundSyncState.RUNNING
+      val retryScheduled =
+        backgroundSync.state == BackgroundSyncState.ENQUEUED ||
+          backgroundSync.state == BackgroundSyncState.BLOCKED
+
       when (stream) {
         SnapshotStream.Loading -> QuotesUiState.Loading
-        is SnapshotStream.Failed -> QuotesUiState.Error(message = stream.message, isRefreshing = refreshing)
+        is SnapshotStream.Failed ->
+          QuotesUiState.Error(message = stream.message, isRefreshing = effectiveRefreshing)
         is SnapshotStream.Data -> {
           val snapshot = stream.snapshot
+          val syncPhase =
+            when {
+              effectiveRefreshing -> QuotesSyncPhase.SYNCING
+              snapshot.syncStatus.lastErrorType == "NO_CONNECTION" -> QuotesSyncPhase.OFFLINE
+              snapshot.syncStatus.lastErrorType != null -> QuotesSyncPhase.FAILED
+              snapshot.syncStatus.lastSuccessfulSyncAtMillis != null -> QuotesSyncPhase.COMPLETED
+              else -> QuotesSyncPhase.WAITING_FIRST_SYNC
+            }
+
           if (snapshot.items.isEmpty()) {
             QuotesUiState.Empty(
               favoritesOnly = onlyFavorites,
               syncStatus = snapshot.syncStatus,
-              isRefreshing = refreshing,
+              isRefreshing = effectiveRefreshing,
               bannerError = errorText,
               feedbackMessage = feedback,
+              syncPhase = syncPhase,
+              isBackgroundRetryScheduled = retryScheduled,
             )
           } else {
             QuotesUiState.Success(
               items = snapshot.items,
               syncStatus = snapshot.syncStatus,
               favoritesOnly = onlyFavorites,
-              isRefreshing = refreshing,
+              isRefreshing = effectiveRefreshing,
               bannerError = errorText,
               feedbackMessage = feedback,
+              syncPhase = syncPhase,
+              isBackgroundRetryScheduled = retryScheduled,
             )
           }
         }

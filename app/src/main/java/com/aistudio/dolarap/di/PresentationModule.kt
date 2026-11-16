@@ -13,6 +13,7 @@ val presentationModule = module {
       refreshQuotesUseCase = get(),
       toggleFavoriteUseCase = get(),
       removeCurrencyUseCase = get(),
+      syncScheduler = getOrNull(),
     )
   }
 

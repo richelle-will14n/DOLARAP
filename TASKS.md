@@ -86,15 +86,15 @@ Legenda de status:
 
 ---
 
-## E06 — Offline First, sincronização e validação
+## E06 — Offline First, sincronização e validação *(Implementação e testes concluídos — aguardando revisão externa)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E06-T01** | Implementar `SyncQuotesWorker` e `WorkManagerSyncScheduler` | Worker executa atualização em background usando os repositórios sem duplicar lógica. | PENDENTE |
-| **E06-T02** | Configurar agendamento periódico de 6 horas sem duplicação | `enqueueUniquePeriodicWork` com `ExistingPeriodicWorkPolicy.KEEP` agendado na inicialização do app. | PENDENTE |
-| **E06-T03** | Configurar re-sincronização condicionada à rede após falha de conexão | `enqueueUniqueWork` com `NetworkType.CONNECTED` agendado ao falhar por falta de internet, evitando duplicidade. | PENDENTE |
-| **E06-T04** | Validar fluxo completo Offline First e expiração de 15 minutos | Verificado que dados aparecem imediatamente offline, não são apagados em falhas e exibem aviso após 15 minutos. | PENDENTE |
-| **E06-T05** | Executar bateria completa de testes unitários e validações manuais | Todos os casos de `TEST_RESULTS.md` executados e registrados com resultado real, data e observações. | PENDENTE |
+| **E06-T01** | Implementar `SyncQuotesWorker` e `WorkManagerSyncScheduler` | Worker executa atualização em background via `QuoteRepository`, trata falhas transitórias/permanentes e HTTP 429 (`Retry-After`) com `KoinWorkerFactory` e `Configuration.Provider`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E06-T02** | Configurar agendamento periódico de 6 horas sem duplicação | `enqueueUniquePeriodicWork` (`dolarap_periodic_quotes_sync`) com `ExistingPeriodicWorkPolicy.KEEP`, `NetworkType.CONNECTED` e `BackoffPolicy.EXPONENTIAL` agendado na inicialização (`DolarapApplication`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E06-T03** | Configurar re-sincronização condicionada à rede após falha de conexão | `enqueueUniqueWork` (`dolarap_connectivity_retry_quotes_sync`) com `NetworkType.CONNECTED`, `BackoffPolicy.EXPONENTIAL`, política `KEEP` (ou `REPLACE` com `initialDelay` em `Retry-After`) e cancelamento em sucesso no foreground. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E06-T04** | Validar fluxo completo Offline First e expiração de 15 minutos | `QuotesViewModel`/`QuotesScreen` consolidam os 7 estados não contraditórios de sync sem ocultar dados do Room; fluxo ponta a ponta validado com atualização automática via `Flow` e aviso após 15 minutos. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E06-T05** | Executar bateria completa de testes unitários e validações manuais | 14 novos testes da E06 (92/92 no total em `:app:testDebugUnitTest`) executados e registrados em `TEST_RESULTS.md`; validações manuais em dispositivo permanecem marcadas como não executadas por ausência de ADB/emulador no container. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
 
 ---
 

@@ -18,7 +18,7 @@ val domainModule = module {
   single { CurrencyConverter() }
 
   factory { ObserveDashboardQuotesUseCase(quoteRepository = get()) }
-  factory { RefreshQuotesUseCase(quoteRepository = get()) }
+  factory { RefreshQuotesUseCase(quoteRepository = get(), syncScheduler = getOrNull()) }
   factory { ObserveAvailableCurrenciesUseCase(catalogRepository = get()) }
   factory { SearchAvailableCurrenciesUseCase(catalogRepository = get()) }
   factory { RefreshCatalogUseCase(catalogRepository = get()) }

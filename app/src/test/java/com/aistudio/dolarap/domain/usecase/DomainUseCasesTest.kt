@@ -10,8 +10,10 @@ import com.aistudio.dolarap.domain.model.QuoteRate
 import com.aistudio.dolarap.domain.model.SyncStatus
 import com.aistudio.dolarap.domain.repository.CatalogRepository
 import com.aistudio.dolarap.domain.repository.QuoteRepository
+import com.aistudio.dolarap.domain.service.BackgroundSyncInfo
 import com.aistudio.dolarap.domain.service.CurrencyConverter
 import com.aistudio.dolarap.domain.service.QuoteFreshnessEvaluator
+import com.aistudio.dolarap.domain.service.SyncScheduler
 import com.aistudio.dolarap.domain.service.TimeProvider
 import java.math.BigDecimal
 import kotlinx.coroutines.flow.Flow
@@ -134,6 +136,30 @@ class DomainUseCasesTest {
     assertEquals(listOf("USD"), useCase(favoritesOnly = true).first().items.map { it.code })
   }
 
+  @Test
+  fun `RefreshQuotesUseCase schedules connectivity retry on transient failures and cancels on success`() =
+    runBlocking {
+      val quoteRepo = FakeQuoteRepository()
+      val scheduler = RecordingSyncScheduler()
+      val useCase = RefreshQuotesUseCase(quoteRepo, scheduler)
+
+      quoteRepo.refreshAllResult = DomainResult.Error(DomainError.NoConnection)
+      useCase()
+      assertEquals(listOf<Long?>(null), scheduler.scheduledRetryDelays)
+
+      quoteRepo.refreshAllResult = DomainResult.Error(DomainError.RateLimited(retryAfterSeconds = 75L))
+      useCase()
+      assertEquals(listOf(null, 75L), scheduler.scheduledRetryDelays)
+
+      quoteRepo.refreshAllResult = DomainResult.Error(DomainError.UnsupportedPair("XYZ-BRL"))
+      useCase()
+      assertEquals(2, scheduler.scheduledRetryDelays.size)
+
+      quoteRepo.refreshAllResult = DomainResult.Success(quoteRepo.emptyStatus)
+      useCase()
+      assertEquals(1, scheduler.cancelRetryCount)
+    }
+
   private fun availableCurrency(
     code: String,
     friendlyName: String,
@@ -150,6 +176,23 @@ class DomainUseCasesTest {
       isAvailable = true,
       updatedAtMillis = fakeNowMillis,
     )
+
+  private class RecordingSyncScheduler : SyncScheduler {
+    val scheduledRetryDelays = mutableListOf<Long?>()
+    var cancelRetryCount = 0
+
+    override fun schedulePeriodicSync() = Unit
+
+    override fun scheduleConnectivityRetrySync(delaySeconds: Long?) {
+      scheduledRetryDelays.add(delaySeconds)
+    }
+
+    override fun cancelConnectivityRetrySync() {
+      cancelRetryCount++
+    }
+
+    override fun observeSyncState(): Flow<BackgroundSyncInfo> = MutableStateFlow(BackgroundSyncInfo())
+  }
 
   private class FakeQuoteRepository(
     private val snapshot: Map<String, QuoteRate> = emptyMap(),
@@ -186,7 +229,7 @@ class DomainUseCasesTest {
         )
       )
 
-    private val emptyStatus =
+    val emptyStatus =
       SyncStatus(
         lastSuccessfulSyncAtMillis = null,
         lastAttemptAtMillis = null,
@@ -194,6 +237,8 @@ class DomainUseCasesTest {
         lastCatalogSyncAtMillis = null,
         freshnessStatus = QuoteFreshnessStatus.UNAVAILABLE,
       )
+
+    var refreshAllResult: DomainResult<SyncStatus> = DomainResult.Success(emptyStatus)
 
     override fun observeDashboardQuotes(): Flow<DashboardQuotesSnapshot> =
       itemsFlow.map { DashboardQuotesSnapshot(it, emptyStatus) }
@@ -203,7 +248,7 @@ class DomainUseCasesTest {
 
     override suspend fun getQuotesSnapshot(): Map<String, QuoteRate> = snapshot
 
-    override suspend fun refreshQuotes(): DomainResult<SyncStatus> = DomainResult.Success(emptyStatus)
+    override suspend fun refreshQuotes(): DomainResult<SyncStatus> = refreshAllResult
 
     override suspend fun refreshCurrencyQuote(code: String): DomainResult<Unit> {
       refreshedSingleCodes.add(code)

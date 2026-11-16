@@ -418,6 +418,53 @@ class DolarapUiAndNavigationTest {
     }
   }
 
+  @Test
+  fun `quotes screen displays offline and sync failure banners non-destructively while keeping Room quotes`() {
+    val snapshot = FakeQuoteRepository.defaultSnapshot(freshnessStatus = QuoteFreshnessStatus.STALE)
+    var uiState by mutableStateOf(
+      QuotesUiState.Success(
+        items = snapshot.items,
+        syncStatus = snapshot.syncStatus.copy(lastErrorType = "NO_CONNECTION"),
+        favoritesOnly = false,
+        isRefreshing = false,
+        syncPhase = com.aistudio.dolarap.presentation.quotes.QuotesSyncPhase.OFFLINE,
+        isBackgroundRetryScheduled = true,
+      )
+    )
+
+    composeTestRule.setContent {
+      DolarapTheme {
+        QuotesScreen(
+          uiState = uiState,
+          onRefresh = {},
+          onSetFavoritesOnly = {},
+          onToggleFavorite = {},
+          onRemoveCurrency = {},
+          onDismissBannerError = {},
+          onDismissFeedback = {},
+          onNavigateToSearch = {},
+          onNavigateToConverter = {},
+        )
+      }
+    }
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("quotes_stale_banner").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("quotes_offline_banner").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("quotes_list").performScrollToNode(hasTestTag("quote_card_USD"))
+    composeTestRule.onNodeWithTag("quote_card_USD").assertIsDisplayed()
+
+    uiState =
+      uiState.copy(
+        syncStatus = snapshot.syncStatus.copy(lastErrorType = "RATE_LIMITED"),
+        syncPhase = com.aistudio.dolarap.presentation.quotes.QuotesSyncPhase.FAILED,
+      )
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("quotes_list").performScrollToNode(hasTestTag("quotes_sync_error_banner"))
+    composeTestRule.onNodeWithTag("quotes_sync_error_banner").assertIsDisplayed()
+    composeTestRule.onAllNodesWithTag("quotes_offline_banner").assertCountEquals(0)
+  }
+
   private fun contrastRatio(foreground: Color, background: Color): Float {
     val l1 = foreground.luminance()
     val l2 = background.luminance()
