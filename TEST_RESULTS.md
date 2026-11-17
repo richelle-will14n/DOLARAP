@@ -1,6 +1,6 @@
 # TEST_RESULTS — DOLARAP
 
-> **Status geral:** Etapa E06 (Offline First completo, `SyncScheduler`, `SyncQuotesWorker`, `WorkManagerSyncScheduler`, agendamento único de 6h, retry `CONNECTED` com HTTP 429/`Retry-After`, estado unificado na UI e integração WorkManager + Room + Flow) executada em `2026-11-16` via `gradle :app:testDebugUnitTest :app:assembleDebug` (**92 testes em 24 suítes**: 14 novos da E06 + 3 da integração `AwesomeApiAuthInterceptor` + 22 da E05 + 21 da E04 + 18 da E03 + 12 da E02 + 2 base da E01, todos aprovados), **aguardando revisão externa da etapa E06**. Os registros manuais/UI em dispositivo real da Etapa E00 (`MT-01`–`MT-11`) permanecem preservados como `NÃO EXECUTADO`. Testes instrumentados em dispositivo/emulador (`androidTest`) não foram executados por ausência de emulador/ADB acessível ao agente neste container.
+> **Status geral:** **Etapa E07 concluída em `2026-11-17` (aguardando revisão final externa).** Etapas **E00–E06** revisadas e encerradas. Revalidação final executada via `gradle :app:testDebugUnitTest :app:assembleDebug` (**92/92 testes aprovados em 24 suítes**, 0 falhas, 0 erros, 0 ignorados) seguida de build final da plataforma (`compile_applet`) gerando `app/build/outputs/apk/debug/app-debug.apk` (`22.590.182` bytes) com `BuildConfig.AWESOME_API_KEY` real embutida no DEX. Os testes manuais `MT-01`–`MT-11` e testes instrumentados (`androidTest`) foram **dispensados pelo responsável pelo projeto** e permanecem registrados como `NÃO EXECUTADO`.
 
 ## Legenda de Status
 - `NÃO EXECUTADO` — Caso de teste planejado, aguardando implementação da funcionalidade correspondente.
@@ -17,9 +17,9 @@
 | E02 — Banco de Dados Local | 2026-11-15 | Agente (JVM + Robolectric) | `gradle :app:testDebugUnitTest` (SDK 36) | 12/12 testes da E02 aprovados (4 unitários puros + 8 integração Room/Koin via Robolectric); etapa aprovada | APROVADO |
 | E03 — Integração AwesomeAPI | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 18/18 testes da E03 aprovados (7 unitários puros + 11 integração MockWebServer/Room/Koin via Robolectric); etapa aprovada | APROVADO |
 | E04 — Camada de Domínio e Repositórios | 2026-11-15 | Agente (JVM + Robolectric + MockWebServer) | `gradle :app:testDebugUnitTest` (SDK 36) | 21/21 testes da E04 aprovados (16 unitários puros + 5 integração Repository/Room/MockWebServer/Koin via Robolectric); etapa aprovada | APROVADO |
-| E05 — Interface Jetpack Compose | 2026-11-15 | Agente (JVM + Robolectric + Compose UI Test) | `gradle :app:testDebugUnitTest` (SDK 36) | 22/22 testes da E05 aprovados (15 unitários ViewModels/Formatter + 1 integração DI Koin + 6 UI/Navegação/Contraste Compose via Robolectric); etapa aguardando revisão externa | APROVADO |
-| E06 — Offline First (WorkManager) | 2026-11-16 | Agente (JVM + Robolectric + WorkManager + MockWebServer) | `gradle :app:testDebugUnitTest :app:assembleDebug` (SDK 36) | 14/14 novos testes da E06 aprovados (92/92 no total em 24 suítes); etapa aguardando revisão externa | APROVADO |
-| E07 — Validação Final de Entrega | - | - | - | Aguardando implementação | NÃO EXECUTADO |
+| E05 — Interface Jetpack Compose | 2026-11-15 | Agente (JVM + Robolectric + Compose UI Test) | `gradle :app:testDebugUnitTest` (SDK 36) | 22/22 testes da E05 aprovados (15 unitários ViewModels/Formatter + 1 integração DI Koin + 6 UI/Navegação/Contraste Compose via Robolectric); etapa revisada e aprovada | APROVADO |
+| E06 — Offline First (WorkManager) | 2026-11-16 | Agente (JVM + Robolectric + WorkManager + MockWebServer) | `gradle :app:testDebugUnitTest :app:assembleDebug` (SDK 36) | 14/14 novos testes da E06 aprovados (92/92 no total em 24 suítes); etapa revisada e encerrada | APROVADO |
+| E07 — Validação Final de Entrega | 2026-11-17 | Agente (JVM + Robolectric + Build Gradle/AI Studio) | `gradle :app:testDebugUnitTest` + `compile_applet` (SDK 36) | Revalidação 92/92 aprovada; APK debug gerado (`22.590.182` bytes) com `AWESOME_API_KEY` embutida; `MT-01`–`MT-11` e `androidTest` dispensados (`NÃO EXECUTADO`) | APROVADO |
 
 ---
 
@@ -46,6 +46,8 @@
 ---
 
 ## 3. Validações Manuais Planejadas
+
+> **Registro da Etapa E07:** Os cenários manuais `MT-01` a `MT-11` abaixo (bem como os testes instrumentados `androidTest`) foram **formalmente dispensados pelo responsável pelo projeto** na etapa final (`E07`), permanecendo registrados como `NÃO EXECUTADO` sem fabricação de evidências.
 
 | ID | Cenário Manual | Fluxo / Tela | Critério Esperado | Resultado | Data | Observações | Status |
 |---|---|---|---|---|---|---|---|
@@ -197,6 +199,20 @@ Execução realizada em **2026-11-16** via `gradle :app:testDebugUnitTest :app:a
 | **E06-IT-05** | Fluxo Offline First ponta a ponta: abertura offline via Room, sync do `SyncQuotesWorker` contra `MockWebServer` atualizando a UI via `Flow`, preservação de cache em falha e sinalização `STALE` > 15 min | Integração Ponta a Ponta (Room + `MockWebServer` + Worker + `QuotesViewModel`) | `app/src/test/java/com/aistudio/dolarap/data/worker/OfflineFirstAndSyncFlowIntegrationTest.kt` | APROVADO | Sem falhas |
 | **E06-UI-01** | `QuotesScreen` exibe banners não destrutivos `quotes_offline_banner` e `quotes_sync_error_banner` mantendo visíveis os cards locais do Room | Compose UI (Robolectric) | `app/src/test/java/com/aistudio/dolarap/presentation/DolarapUiAndNavigationTest.kt` | APROVADO | Sem falhas |
 | **E06-INST-01** | Testes instrumentados em dispositivo/emulador Android (`ExampleInstrumentedTest`) e testes manuais `MT-01`–`MT-11` em emulador | Instrumentado (`androidTest`) / Manual | `app/src/androidTest/java/com/aistudio/dolarap/ExampleInstrumentedTest.kt` | NÃO EXECUTADO | Ambiente de container sem emulador Android interativo ou ADB acessível |
+
+---
+
+## 9. Execução da Etapa E07 — Validação Final de Entrega, APK e Segurança
+
+Validação final executada em **2026-11-17** após encerramento das etapas E00–E06 e inspeção completa de arquitetura, autenticação, `.gitignore` e geração do APK de entrega.
+
+| ID | Verificação / Tarefa | Método / Comando | Resultado Observado | Status |
+|---|---|---|---|---|
+| **E07-VER-01** | Reexecução integral da suíte unitária/integração/UI Compose | `gradle :app:testDebugUnitTest` | **92/92 testes aprovados** em 24 suítes XML (`0` falhas, `0` erros, `0` ignorados) | APROVADO |
+| **E07-VER-02** | Compilação Gradle Debug + build da plataforma com injeção de Secrets | `gradle :app:assembleDebug` + `compile_applet` | Build verde gerando `app/build/outputs/apk/debug/app-debug.apk` (`22.590.182` bytes / `21,54 MiB`) e `.build-outputs/app-debug.apk` (`22.590.182` bytes) | APROVADO |
+| **E07-VER-03** | Verificação de incorporação da `AWESOME_API_KEY` no `BuildConfig` e DEX do APK (sem expor a chave) | Inspeção automatizada em `BuildConfig.java` e nos arquivos `.dex` do APK | `AWESOME_API_KEY` com 64 caracteres (não placeholder) embutida no `BuildConfig` e presente no DEX do APK; `.env` removido automaticamente após o build da plataforma; `AwesomeApiAuthInterceptor` integrado ao `OkHttpClient` | APROVADO |
+| **E07-VER-04** | Verificação de isolamento da camada `domain` | `grep` por imports de Android/Room/Retrofit/OkHttp/Moshi em `domain/` | `CLEAN_DOMAIN` (0 violações) | APROVADO |
+| **E07-INST-01** | Testes instrumentados (`androidTest`) e manuais `MT-01`–`MT-11` | - | **Dispensados pelo responsável pelo projeto** (e sem emulador/ADB no container) | NÃO EXECUTADO |
 
 
 

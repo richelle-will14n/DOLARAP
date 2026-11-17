@@ -1,7 +1,7 @@
 # DOLARAP
 
-> **Estado atual do projeto:** **Etapa E06 concluída (Offline First completo, `SyncScheduler`, `SyncQuotesWorker`, `WorkManagerSyncScheduler`, agendamento único de 6h, retry `CONNECTED` com suporte a HTTP 429/`Retry-After`, estado unificado de sincronização na UI e 14 novos testes — 92/92 aprovados) e aguardando revisão externa.**
-> A consolidação final de entrega (`E07`) permanece **pendente**.
+> **Estado atual do projeto:** **Etapas E00–E06 aprovadas e Etapa E07 (Finalização, APK final e documentação consolidada) concluída — aguardando revisão final externa.**
+> Suíte automatizada verificada com **92/92 testes aprovados** em 24 suítes (`gradle :app:testDebugUnitTest`) e APK Debug final gerado com `BuildConfig.AWESOME_API_KEY` embutida via Secrets Gradle Plugin (`22.590.182` bytes / `21,54 MiB`). Testes manuais (`MT-01`–`MT-11`) e instrumentados (`androidTest`) foram **dispensados / não executados**.
 
 Aplicativo Android nativo para consulta e conversão de cotações de moedas estrangeiras em relação ao Real brasileiro (**BRL**), projetado com foco em **Offline First**, precisão monetária (`BigDecimal`) e arquitetura limpa em módulo único (`:app`).
 
@@ -16,9 +16,9 @@ Aplicativo Android nativo para consulta e conversão de cotações de moedas est
 | **E02** | Banco de dados local Room (entidades, relação, DAOs com `Flow`, seed das 10 moedas padrão, Koin e testes) | **Aprovada** |
 | **E03** | Integração com a AwesomeAPI (Retrofit/OkHttp/Moshi, `/json/last/{pairs}`, `/json/available` + fallback `/xml/available`, tratamento de erros e `CoinNotExists`) | **Aprovada** |
 | **E04** | Camada de domínio e repositórios (modelos puros, `BigDecimal`, UseCases, regra de 15 min, SSOT Room, `dataModule`/`domainModule`) | **Aprovada** |
-| **E05** | Interface Jetpack Compose (Cotações, Pesquisa/Adição, Conversor, Filtro de Favoritos, Navigation Compose, `PresentationModule`) | **Implementação e testes concluídos — aguardando revisão externa** |
-| **E06** | Offline First, sincronização com WorkManager (`SyncQuotesWorker`, periódico 6h, retry `CONNECTED`, `Retry-After` e estados unificados) | **Implementação e testes concluídos — aguardando revisão externa** |
-| **E07** | Entrega final, documentação consolidada, APK e versionamento | Pendente |
+| **E05** | Interface Jetpack Compose (Cotações, Pesquisa/Adição, Conversor, Filtro de Favoritos, Navigation Compose, `PresentationModule`) | **Aprovada** |
+| **E06** | Offline First, sincronização com WorkManager (`SyncQuotesWorker`, periódico 6h, retry `CONNECTED`, `Retry-After` e estados unificados) | **Aprovada** |
+| **E07** | Entrega final, documentação consolidada, APK debug (`AWESOME_API_KEY` via Secrets) e organização para GitHub | **Implementada — aguardando revisão final** |
 
 ---
 
@@ -50,10 +50,12 @@ Aplicativo Android nativo para consulta e conversão de cotações de moedas est
   - **Contrato puro `SyncScheduler` + `WorkManagerSyncScheduler`:** Agenda trabalho periódico único de 6 horas (`dolarap_periodic_quotes_sync`, `ExistingPeriodicWorkPolicy.KEEP`, `NetworkType.CONNECTED`, `BackoffPolicy.EXPONENTIAL`) na inicialização e trabalho único de retry condicionado à rede (`dolarap_connectivity_retry_quotes_sync`, `ExistingWorkPolicy.KEEP` ou `REPLACE` com `initialDelay` quando há `Retry-After`) após falhas transitórias ou rate limit, expondo `Flow<BackgroundSyncInfo>`.
   - **`SyncQuotesWorker`:** Executa `QuoteRepository.refreshQuotes()` sem duplicar lógica HTTP/Room; aplica retry limitado (`MAX_RETRY_ATTEMPTS = 3`) para falhas temporárias (`NoConnection`, `Timeout`, 5xx, lock transitório de SQLite), respeita `Retry-After` no HTTP 429 agendando retry atrasado, falha imediatamente em erros permanentes sem loop infinito e preserva integralmente os dados e timestamps do Room em qualquer falha.
   - **Estado unificado na UI (`QuotesViewModel` + `QuotesUiState.syncPhase` + `QuotesScreen`):** Distingue sem contradições aguardando primeira sincronização, sincronizando (foreground ou worker em execução), concluído, offline, falha de sincronização, dados locais disponíveis e dados desatualizados (> 15 min), exibindo banners não destrutivos sem esconder cotações locais.
-- **Testes automatizados (`E01`–`E06`):** **92 testes** em 24 suítes (unitários, integração local Room/MockWebServer/WorkManager, DI Koin e Compose UI) aprovados em `gradle :app:testDebugUnitTest`.
+- **Testes automatizados (`E01`–`E06`, revalidados na `E07`):** **92 testes** em 24 suítes (unitários, integração local Room/MockWebServer/WorkManager, DI Koin e Compose UI) aprovados em `gradle :app:testDebugUnitTest`.
+- **Entrega final (`E07`):** Revisão final da arquitetura, build de APK Debug com `AWESOME_API_KEY` incorporada pelo Secrets Gradle Plugin no ambiente do Google AI Studio (`app/build/outputs/apk/debug/app-debug.apk`), atualização completa da documentação e verificação do `.gitignore` para versionamento seguro no Android Studio/GitHub.
 
-### Planejado para etapas futuras (ainda NÃO implementado)
-- **Entrega Final (`E07`):** Consolidação final de evidências em dispositivo/emulador real e checklist final de versionamento.
+### Itens dispensados / fora do escopo desta entrega
+- **Testes manuais (`MT-01`–`MT-11`) e instrumentados (`androidTest`):** Dispensados pelo responsável pelo projeto e não executados (ambiente em container sem ADB/emulador acessível ao agente).
+- **Fora de escopo:** Login, integração bancária, pagamentos, gráficos históricos, alertas/notificações e backend próprio.
 
 ---
 
@@ -154,19 +156,26 @@ O projeto adota **Clean Architecture + MVVM** em módulo único `:app` (`com.ais
 
 ---
 
-## Configuração, Compilação e Execução (Estado Atual)
+## Configuração, Compilação, APK e Execução
 
-1. **Requisitos do ambiente:** Android SDK 36, JDK 11+ e Gradle configurado no ambiente (ou Android Studio recente).
-2. **Compilar o APK Debug:**
-   ```sh
-   gradle :app:assembleDebug
-   ```
-   *(O APK atual já exibe as três telas reais em Jetpack Compose — Cotações, Pesquisa/Adição e Conversor — além da sincronização automática periódica a cada 6 horas e retry condicionado à conectividade via WorkManager.)*
-3. **Executar os testes unitários, de integração local e de UI Compose (Domínio/Room/AwesomeAPI/Repositórios/WorkManager/ViewModels/Navigation/Koin via JUnit + Robolectric + MockWebServer):**
+1. **Requisitos do ambiente:** Android SDK 36 (`minSdk 24`, `targetSdk 36`), JDK 11+ (ambiente validado com JDK 21) e Gradle (`9.3.1`).
+2. **Configuração da API Key (`AWESOME_API_KEY`):**
+   - No **Google AI Studio**, a variável `AWESOME_API_KEY` é gerenciada pelo **Secrets panel** e injetada temporariamente em `.env` durante os builds da plataforma (removida automaticamente após o build para não persistir credenciais no workspace).
+   - Localmente no **Android Studio**, crie o arquivo `.env` na raiz do projeto (copiando `.env.example` e preenchendo `AWESOME_API_KEY=<sua_chave>`) antes de gerar o APK. O arquivo `.env` está protegido no `.gitignore` e **nunca** deve ser versionado.
+   - O `Secrets Gradle Plugin` injeta o valor em `BuildConfig.AWESOME_API_KEY`, consumido pelo `AwesomeApiAuthInterceptor` para enviar o cabeçalho `x-api-key` nas chamadas da AwesomeAPI sem exigir que o usuário final insira qualquer chave no celular.
+3. **Executar os testes unitários, de integração local e de UI Compose (92 testes / 24 suítes):**
    ```sh
    gradle :app:testDebugUnitTest
    ```
-4. **Credenciais:** A chave da AwesomeAPI (`AWESOME_API_KEY`) é injetada em tempo de build via Secrets Gradle Plugin em `BuildConfig.AWESOME_API_KEY` e enviada pelo `AwesomeApiAuthInterceptor` sem exposição em logs nem exigência de login do usuário.
+4. **Compilar o APK Debug final:**
+   ```sh
+   gradle :app:assembleDebug
+   ```
+   *(No Google AI Studio, utilize o build da plataforma / menu **Settings → Generate APK/AAB** ou `compile_applet` para garantir a injeção automática de `.env` a partir do Secrets panel. Um `gradle :app:assembleDebug` avulso no shell após a limpeza automática de `.env` utilizaria o placeholder de `.env.example`.)*
+5. **Localização e obtenção do APK gerado:**
+   - **Caminho no projeto:** `app/build/outputs/apk/debug/app-debug.apk` (e espelho da plataforma em `.build-outputs/app-debug.apk`, `22.590.182` bytes / `21,54 MiB`).
+   - **Como obter no Google AI Studio:** Pelo menu de configurações (**Settings → Generate APK/AAB**) para download direto do APK assinado em debug, ou via **Export project as ZIP** (que inclui o projeto pronto e/ou abertura direta no Android Studio).
+   - **Aviso de segurança:** Como o APK de entrega acadêmica/protótipo embute a `AWESOME_API_KEY` em `BuildConfig`, ele pode ser descompilado; **não compartilhe o arquivo `.apk` publicamente** nem o suba ao GitHub (protegido por `*.apk` e `/.build-outputs/` no `.gitignore`).
 
 ---
 
@@ -203,8 +212,8 @@ Os resultados detalhados estão registrados em [`TEST_RESULTS.md`](TEST_RESULTS.
   - `WorkManagerSyncSchedulerTest` (3 testes via Robolectric + WorkManager real): trabalho periódico único de 6h (`KEEP`, `NetworkType.CONNECTED`), retry único `OneTimeWork` (`KEEP`, `REPLACE` com `Retry-After`, `NetworkType.CONNECTED`) e mapeamento completo dos estados `IDLE`/`ENQUEUED`/`RUNNING`/`BLOCKED`/`SUCCEEDED`/`FAILED`.
   - `OfflineFirstAndSyncFlowIntegrationTest` (1 teste ponta a ponta Room + `MockWebServer` + `SyncQuotesWorker` + `QuotesViewModel`): abertura offline imediata via Room, atualização reativa automática do `Flow` na UI quando o worker persiste novas cotações, preservação do cache em falha e aviso após > 15 minutos.
   - Testes adicionais em `AwesomeApiRemoteDataSourceTest` (1 teste `Retry-After`), `DomainUseCasesTest` (1 teste `RefreshQuotesUseCase`), `KoinPresentationModuleTest` (1 teste `KoinWorkerFactory`), `QuotesViewModelTest` (1 teste dos 7 estados de sync) e `DolarapUiAndNavigationTest` (1 teste dos banners offline/erro sem ocultar cards do Room).
-- **Total executado na última bateria (`2026-11-16`):** **92 testes executados** em 24 suítes via `gradle :app:testDebugUnitTest` (92 aprovados, 0 falhas, 0 ignorados).
-- **Testes instrumentados (`androidTest`):** Não executados neste ambiente de container por ausência de emulador Android interativo/ADB acessível ao agente.
+- **Total revalidado na Etapa E07 (`2026-11-17`):** **92 testes executados** em 24 suítes via `gradle :app:testDebugUnitTest` (92 aprovados, 0 falhas, 0 erros, 0 ignorados).
+- **Testes instrumentados (`androidTest`) e manuais (`MT-01`–`MT-11`):** **Não executados / dispensados pelo responsável pelo projeto** (e ambiente em container sem emulador/ADB acessível ao agente).
 
 ---
 
@@ -218,5 +227,6 @@ Os resultados detalhados estão registrados em [`TEST_RESULTS.md`](TEST_RESULTS.
 
 ## Evidências e Entrega
 
-- **Status atual:** Aguardando revisão externa das etapas **E05** e **E06** para liberação da **Etapa E07**.
-- **Evidências finais (consolidação final de entrega e versionamento):** Serão concluídas na **Etapa E07**.
+- **Status atual:** **Etapa E07 concluída — aguardando revisão final externa.**
+- **APK final verificado:** `app/build/outputs/apk/debug/app-debug.apk` (`22.590.182` bytes / `21,54 MiB`), com `BuildConfig.AWESOME_API_KEY` real verificada no DEX e `AwesomeApiAuthInterceptor` integrado ao `OkHttpClient`.
+- **Versionamento GitHub:** Configurado via `.gitignore` (protegendo `.env`, `debug.keystore`, `/.build-outputs/`, `*.apk`, `*.aab`, `/build`, `.gradle` e `local.properties`); sem commit/push automático no ambiente para realização pelo responsável no Android Studio.

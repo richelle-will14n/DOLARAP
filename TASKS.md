@@ -73,36 +73,36 @@ Legenda de status:
 
 ---
 
-## E05 — Interface (Jetpack Compose) *(Implementação e testes concluídos — aguardando revisão externa)*
+## E05 — Interface (Jetpack Compose) *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E05-T01** | Configurar `DolarapNavGraph` com Navigation Compose | Navegação funcional (`DolarapApp` + `DolarapNavHost` + `navigateSingleTopTo`) com `NavigationBar`/`NavigationRail` adaptativa, preservação de estado entre abas e sem duplicação na pilha. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E05-T02** | Implementar `QuotesViewModel` e `QuotesScreen` (Tela inicial + Favoritos) | Exibe 10 padrão + adicionais com `bid`, `ask`, variação (`pctChange`/`varBid`), timestamp, filtro `Todas`/`Favoritas`, pull-to-refresh/atualização manual e remoção restrita às moedas adicionadas. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E05-T03** | Implementar banners/indicadores de estado Offline e Desatualizado (> 15 min) | `FreshnessBadge` e `StatusBannerCard` sinalizam dados `FRESH`, `STALE` (> 15 min) e `UNAVAILABLE` na Tela Inicial e no Conversor sem apagar cache local. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E05-T04** | Implementar `CurrencySearchViewModel` e `CurrencySearchScreen` | Pesquisa em tempo real por código/nome via `SearchAvailableCurrenciesUseCase`, status (`Padrão (protegida)`/`Selecionada`/`Disponível`), proteção contra duplicidade/em voo e atualização de catálogo. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E05-T05** | Implementar `ConverterViewModel` e `ConverterScreen` | Seletor com BRL + 10 padrão + adicionais, inversão rápida, entrada numérica, cálculo 100% via `ConvertCurrencyUseCase` (`BigDecimal`/`bid`), taxa complementar `ask`/cruzada e aviso de indisponibilidade/desatualização. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E05-T06** | Garantir estados `Loading`, `Success`, `Empty` e `Error` em todas as telas + testes | Todas as telas implementam estados explícitos, `testTag`s, acessibilidade, `PresentationModule` no Koin e 22 testes da E05 (ViewModels, Formatter, DI e Robolectric Compose UI/contraste) aprovados. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E05-T01** | Configurar `DolarapNavGraph` com Navigation Compose | Navegação funcional (`DolarapApp` + `DolarapNavHost` + `navigateSingleTopTo`) com `NavigationBar`/`NavigationRail` adaptativa, preservação de estado entre abas e sem duplicação na pilha. | APROVADA |
+| **E05-T02** | Implementar `QuotesViewModel` e `QuotesScreen` (Tela inicial + Favoritos) | Exibe 10 padrão + adicionais com `bid`, `ask`, variação (`pctChange`/`varBid`), timestamp, filtro `Todas`/`Favoritas`, pull-to-refresh/atualização manual e remoção restrita às moedas adicionadas. | APROVADA |
+| **E05-T03** | Implementar banners/indicadores de estado Offline e Desatualizado (> 15 min) | `FreshnessBadge` e `StatusBannerCard` sinalizam dados `FRESH`, `STALE` (> 15 min) e `UNAVAILABLE` na Tela Inicial e no Conversor sem apagar cache local. | APROVADA |
+| **E05-T04** | Implementar `CurrencySearchViewModel` e `CurrencySearchScreen` | Pesquisa em tempo real por código/nome via `SearchAvailableCurrenciesUseCase`, status (`Padrão (protegida)`/`Selecionada`/`Disponível`), proteção contra duplicidade/em voo e atualização de catálogo. | APROVADA |
+| **E05-T05** | Implementar `ConverterViewModel` e `ConverterScreen` | Seletor com BRL + 10 padrão + adicionais, inversão rápida, entrada numérica, cálculo 100% via `ConvertCurrencyUseCase` (`BigDecimal`/`bid`), taxa complementar `ask`/cruzada e aviso de indisponibilidade/desatualização. | APROVADA |
+| **E05-T06** | Garantir estados `Loading`, `Success`, `Empty` e `Error` em todas as telas + testes | Todas as telas implementam estados explícitos, `testTag`s, acessibilidade, `PresentationModule` no Koin e 22 testes da E05 (ViewModels, Formatter, DI e Robolectric Compose UI/contraste) aprovados. | APROVADA |
 
 ---
 
-## E06 — Offline First, sincronização e validação *(Implementação e testes concluídos — aguardando revisão externa)*
+## E06 — Offline First, sincronização e validação *(Aprovada)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E06-T01** | Implementar `SyncQuotesWorker` e `WorkManagerSyncScheduler` | Worker executa atualização em background via `QuoteRepository`, trata falhas transitórias/permanentes e HTTP 429 (`Retry-After`) com `KoinWorkerFactory` e `Configuration.Provider`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E06-T02** | Configurar agendamento periódico de 6 horas sem duplicação | `enqueueUniquePeriodicWork` (`dolarap_periodic_quotes_sync`) com `ExistingPeriodicWorkPolicy.KEEP`, `NetworkType.CONNECTED` e `BackoffPolicy.EXPONENTIAL` agendado na inicialização (`DolarapApplication`). | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E06-T03** | Configurar re-sincronização condicionada à rede após falha de conexão | `enqueueUniqueWork` (`dolarap_connectivity_retry_quotes_sync`) com `NetworkType.CONNECTED`, `BackoffPolicy.EXPONENTIAL`, política `KEEP` (ou `REPLACE` com `initialDelay` em `Retry-After`) e cancelamento em sucesso no foreground. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E06-T04** | Validar fluxo completo Offline First e expiração de 15 minutos | `QuotesViewModel`/`QuotesScreen` consolidam os 7 estados não contraditórios de sync sem ocultar dados do Room; fluxo ponta a ponta validado com atualização automática via `Flow` e aviso após 15 minutos. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
-| **E06-T05** | Executar bateria completa de testes unitários e validações manuais | 14 novos testes da E06 (92/92 no total em `:app:testDebugUnitTest`) executados e registrados em `TEST_RESULTS.md`; validações manuais em dispositivo permanecem marcadas como não executadas por ausência de ADB/emulador no container. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E06-T01** | Implementar `SyncQuotesWorker` e `WorkManagerSyncScheduler` | Worker executa atualização em background via `QuoteRepository`, trata falhas transitórias/permanentes e HTTP 429 (`Retry-After`) com `KoinWorkerFactory` e `Configuration.Provider`. | APROVADA |
+| **E06-T02** | Configurar agendamento periódico de 6 horas sem duplicação | `enqueueUniquePeriodicWork` (`dolarap_periodic_quotes_sync`) com `ExistingPeriodicWorkPolicy.KEEP`, `NetworkType.CONNECTED` e `BackoffPolicy.EXPONENTIAL` agendado na inicialização (`DolarapApplication`). | APROVADA |
+| **E06-T03** | Configurar re-sincronização condicionada à rede após falha de conexão | `enqueueUniqueWork` (`dolarap_connectivity_retry_quotes_sync`) com `NetworkType.CONNECTED`, `BackoffPolicy.EXPONENTIAL`, política `KEEP` (ou `REPLACE` com `initialDelay` em `Retry-After`) e cancelamento em sucesso no foreground. | APROVADA |
+| **E06-T04** | Validar fluxo completo Offline First e expiração de 15 minutos | `QuotesViewModel`/`QuotesScreen` consolidam os 7 estados não contraditórios de sync sem ocultar dados do Room; fluxo ponta a ponta validado com atualização automática via `Flow` e aviso após 15 minutos. | APROVADA |
+| **E06-T05** | Executar bateria completa de testes unitários e validações manuais | 14 novos testes da E06 (92/92 no total em `:app:testDebugUnitTest`) executados e registrados em `TEST_RESULTS.md`; validações manuais em dispositivo dispensadas/não executadas. | APROVADA |
 
 ---
 
-## E07 — Entrega e documentação
+## E07 — Entrega e documentação *(Implementação, APK e documentação concluídos — aguardando revisão final)*
 
 | ID | Tarefa | Critério de Conclusão | Status |
 |---|---|---|---|
-| **E07-T01** | Atualizar `README.md`, `PLANNING.md` e `TASKS.md` para refletir o estado real implementado | Documentação sem divergências em relação ao código implementado e sem funcionalidades inventadas. | PENDENTE |
-| **E07-T02** | Consolidar `TEST_RESULTS.md` com resultados finais e evidências reais | Todos os testes executados documentados com status, data e observações. | PENDENTE |
-| **E07-T03** | Validar build final de APK (`compile_applet` / `assembleDebug` ou release conforme projeto) | Projeto compila sem erros e gera APK instalável. | PENDENTE |
-| **E07-T04** | Preparar checklist final de entrega e versionamento GitHub | Repositório organizado, histórico limpo, sem segredos vazados e pronto para revisão final. | PENDENTE |
+| **E07-T01** | Atualizar `SPECIFICATION.md`, `PLANNING.md`, `TASKS.md` e `README.md` para refletir o estado real implementado | Documentação sem divergências em relação ao código implementado, registrando E07 e a não execução de `MT-01`–`MT-11` / `androidTest`. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E07-T02** | Consolidar `TEST_RESULTS.md` com resultados finais e evidências reais | Reexecução final de `gradle :app:testDebugUnitTest` (92/92) e `assembleDebug` documentadas com data, APK e registro honesto dos testes dispensados. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E07-T03** | Validar build final de APK (`compile_applet` / `assembleDebug`) com `AWESOME_API_KEY` embutida | APK gerado em `app/build/outputs/apk/debug/app-debug.apk` (`22.590.182` bytes) com `BuildConfig.AWESOME_API_KEY` real verificada no DEX, sem expor a chave. | IMPLEMENTADA (AGUARDANDO REVISÃO) |
+| **E07-T04** | Preparar checklist final de entrega e organização para versionamento GitHub | `.gitignore` atualizado protegendo `.env`, `debug.keystore`, `/.build-outputs/`, `*.apk` e `*.aab`; repositório pronto para commit/push pelo responsável no Android Studio. | IMPLEMENTADA (AGUARDANDO REVISÃO) |

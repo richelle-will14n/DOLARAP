@@ -1,6 +1,6 @@
 # SPECIFICATION — DOLARAP
 
-> **Status do documento:** Planejamento inicial (Etapa 0). Nenhuma funcionalidade foi implementada até o momento.
+> **Status do documento:** Especificação base congelada na Etapa 0 (E00) e preservada como referência dos requisitos do projeto. **Estado final (E07):** Etapas **E00–E06** implementadas, testadas (**92/92 testes unitários/Robolectric aprovados**) e encerradas; Etapa **E07** (revisão final, APK debug com API Key via Secrets Gradle Plugin e documentação consolidada) concluída e aguardando revisão final externa. Validações manuais (`MT-01`–`MT-11`) e testes instrumentados (`androidTest`) foram **dispensados / não executados**.
 
 ## 1. Visão Geral
 

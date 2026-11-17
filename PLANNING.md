@@ -1,6 +1,6 @@
 # PLANNING — DOLARAP
 
-> **Status do documento:** Planejamento técnico atualizado após as etapas E01–E06 (E00–E04 aprovadas; E05 e E06 implementadas e testadas, aguardando revisão externa; E07 planejada).
+> **Status do documento:** Planejamento técnico consolidado após a entrega das etapas **E00–E07** (**E00–E06** implementadas, testadas e encerradas; **E07** concluída com APK final verificado e documentação revisada, aguardando revisão final externa). Validações manuais (`MT-01`–`MT-11`) e instrumentadas (`androidTest`) foram dispensadas / não executadas.
 
 ## 1. Arquitetura Proposta
 
@@ -377,4 +377,4 @@ No `RoomDatabase.Callback.onCreate` (e verificação idempotente na inicializaç
 2. **Catálogo oficial XML vs. tentativa experimental JSON:** Como a documentação oficial da AwesomeAPI define `/xml/available`, a camada `data/remote` (E03) trata `/xml/available` como fonte oficial e `/json/available` apenas como tentativa experimental com fallback XML (bloqueando segunda chamada em 429, 5xx, timeout e offline, sem comprometer o cache salvo no Room).
 3. **Cache de 1 minuto da AwesomeAPI:** Atualizações manuais em intervalos menores que 1 minuto podem retornar a mesma cotação em cache do provedor gratuito.
 4. **WorkManager não exato:** O intervalo de 6 horas representa periodicidade mínima/aproximada gerenciada pelo sistema Android.
-5. **Dependência Koin vs template inicial:** O template inicial ainda não possui Koin, WorkManager ou Navigation Compose descomentados; essa adequação ocorrerá somente na Etapa E01.
+5. **Dependência Koin vs template inicial *(nota histórica da E00)*:** No início do projeto (E00), Koin, WorkManager e Navigation Compose ainda não estavam ativos; toda essa stack foi configurada na E01 e integrada em produção até a E06.
